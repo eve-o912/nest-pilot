@@ -23,6 +23,8 @@ export function AppHeader() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
 
+  if (PUBLIC_ROUTES.includes(pathname)) return null;
+
   useEffect(() => {
     const isDark = document.documentElement.classList.contains('dark');
     setDarkMode(isDark);
