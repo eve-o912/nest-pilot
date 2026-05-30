@@ -36,13 +36,30 @@ export interface Business {
   tagline?: string;
 }
 
+export interface User {
+  id: string;
+  email: string;
+  phone: string;
+  password: string;
+}
+
+export interface AuthSession {
+  user: User;
+  token: string;
+  expiresAt: number;
+}
+
 interface State {
   business: Business;
   transactions: Transaction[];
   mpesa: MpesaMessage[];
+  users: User[];
+  session: AuthSession | null;
 }
 
 const BUSINESS_STORAGE_KEY = "nestpilot.business";
+const AUTH_STORAGE_KEY = "nestpilot.auth";
+const USERS_STORAGE_KEY = "nestpilot.users";
 
 const defaultBusiness: Business = {
   name: "Mama Njeri Grocers",
@@ -75,11 +92,106 @@ function persistBusiness(b: Business) {
   }
 }
 
+function loadSession(): AuthSession | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!raw) return null;
+    const session = JSON.parse(raw) as AuthSession;
+    // Check if session is expired
+    if (session.expiresAt < Date.now()) {
+      window.localStorage.removeItem(AUTH_STORAGE_KEY);
+      return null;
+    }
+    return session;
+  } catch {
+    return null;
+  }
+}
+
+function persistSession(session: AuthSession | null) {
+  if (typeof window === "undefined") return;
+  try {
+    if (session) {
+      window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+    } else {
+      window.localStorage.removeItem(AUTH_STORAGE_KEY);
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+function loadUsers(): User[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(USERS_STORAGE_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as User[];
+  } catch {
+    return [];
+  }
+}
+
+function persistUsers(users: User[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
+  } catch {
+    /* ignore */
+  }
+}
+
+const TRANSACTIONS_STORAGE_KEY = "nestpilot.transactions";
+const MPESA_STORAGE_KEY = "nestpilot.mpesa";
+
+function loadTransactions(): Transaction[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(TRANSACTIONS_STORAGE_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as Transaction[];
+  } catch {
+    return [];
+  }
+}
+
+function persistTransactions(transactions: Transaction[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(TRANSACTIONS_STORAGE_KEY, JSON.stringify(transactions));
+  } catch {
+    /* ignore */
+  }
+}
+
+function loadMpesa(): MpesaMessage[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(MPESA_STORAGE_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw) as MpesaMessage[];
+  } catch {
+    return [];
+  }
+}
+
+function persistMpesa(mpesa: MpesaMessage[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(MPESA_STORAGE_KEY, JSON.stringify(mpesa));
+  } catch {
+    /* ignore */
+  }
+}
+
 const listeners = new Set<() => void>();
 let state: State = {
   business: loadBusiness(),
-  transactions: seed(),
-  mpesa: seedMpesa(),
+  transactions: loadTransactions(),
+  mpesa: loadMpesa(),
+  users: loadUsers(),
+  session: loadSession(),
 };
 
 function emit() { listeners.forEach((l) => l()); }
@@ -99,6 +211,7 @@ export const actions = {
   },
   addTransaction(t: Omit<Transaction, "id">) {
     state = { ...state, transactions: [{ ...t, id: rid() }, ...state.transactions] };
+    persistTransactions(state.transactions);
     emit();
   },
   setReceivableStatus(id: string, status: ReceivableStatus) {
@@ -106,6 +219,7 @@ export const actions = {
       ...state,
       transactions: state.transactions.map((t) => (t.id === id ? { ...t, receivableStatus: status } : t)),
     };
+    persistTransactions(state.transactions);
     emit();
   },
   matchMpesa(mpesaId: string, txnId: string | undefined) {
@@ -113,39 +227,67 @@ export const actions = {
       ...state,
       mpesa: state.mpesa.map((m) => (m.id === mpesaId ? { ...m, matchedTxnId: txnId } : m)),
     };
+    persistMpesa(state.mpesa);
     emit();
+  },
+  signup(email: string, phone: string, password: string) {
+    const existingUser = state.users.find(u => u.email === email || u.phone === phone);
+    if (existingUser) {
+      throw new Error("User already exists with this email or phone");
+    }
+    const user: User = {
+      id: rid(),
+      email,
+      phone,
+      password,
+    };
+    state = { ...state, users: [...state.users, user] };
+    persistUsers(state.users);
+    emit();
+    return { success: true, user };
+  },
+  login(identifier: string, password: string) {
+    const user = state.users.find(u => u.email === identifier || u.phone === identifier);
+    if (!user) {
+      throw new Error("Invalid credentials");
+    }
+    if (user.password !== password) {
+      throw new Error("Invalid credentials");
+    }
+    const session: AuthSession = {
+      user,
+      token: rid(),
+      expiresAt: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
+    };
+    state = { ...state, session };
+    persistSession(session);
+    emit();
+    return { success: true, session };
+  },
+  logout() {
+    state = { ...state, session: null };
+    persistSession(null);
+    emit();
+    return { success: true };
+  },
+  resetPassword(identifier: string, newPassword: string) {
+    const userIndex = state.users.findIndex(u => u.email === identifier || u.phone === identifier);
+    if (userIndex === -1) {
+      throw new Error("User not found");
+    }
+    const updatedUsers = [...state.users];
+    updatedUsers[userIndex] = { ...updatedUsers[userIndex], password: newPassword };
+    state = { ...state, users: updatedUsers };
+    persistUsers(updatedUsers);
+    emit();
+    return { success: true };
   },
 };
 
 function rid() { return Math.random().toString(36).slice(2, 10); }
 
-function seed(): Transaction[] {
-  const now = Date.now();
-  const d = (h: number) => new Date(now - h * 3600_000).toISOString();
-  return [
-    { id: rid(), date: d(1), description: "Sukuma & tomatoes — walk-in", type: "in", amount: 850, tags: ["#sale"], method: "Cash" },
-    { id: rid(), date: d(2), description: "Bread loaves x 12", type: "in", amount: 1440, tags: ["#sale"], method: "M-Pesa", reference: "SJK7T2QH9X" },
-    { id: rid(), date: d(3), description: "Restock — rice 50kg", type: "out", amount: 6500, tags: ["#restock"], method: "M-Pesa" },
-    { id: rid(), date: d(5), description: "Boda delivery to Kawangware", type: "out", amount: 300, tags: ["#transport"], method: "Cash" },
-    { id: rid(), date: d(8), description: "Soda crate — credit (Otieno)", type: "in", amount: 2400, tags: ["#sale"], method: "M-Pesa", receivableStatus: "unpaid", customer: "Otieno K." },
-    { id: rid(), date: d(10), description: "Sugar 25kg restock", type: "out", amount: 3750, tags: ["#restock"], method: "Bank" },
-    { id: rid(), date: d(20), description: "Shop rent — November", type: "out", amount: 18000, tags: ["#rent"], method: "Bank" },
-    { id: rid(), date: d(26), description: "Wedding catering — Wanjiku", type: "in", amount: 14500, tags: ["#sale"], method: "M-Pesa", receivableStatus: "unpaid", customer: "Wanjiku M." },
-    { id: rid(), date: d(30), description: "Office supplies — receipt book", type: "out", amount: 450, tags: ["#supplies"], method: "Cash" },
-    { id: rid(), date: d(34), description: "Mandazi tray — bulk order", type: "in", amount: 1800, tags: ["#sale"], method: "M-Pesa", reference: "SJK6P1RR42", receivableStatus: "paid", customer: "Kibe J." },
-    { id: rid(), date: d(40), description: "Estimate — birthday cake (Achieng)", type: "in", amount: 3500, tags: ["#sale"], method: "Cash", receivableStatus: "draft", customer: "Achieng O." },
-  ];
-}
-
-function seedMpesa(): MpesaMessage[] {
-  return [
-    { id: "m1", raw: "SJK7T2QH9X Confirmed. Ksh1,440.00 received from JOHN KAMAU 07XX XXX 123 on 14/11/25 at 9:14 AM. New M-PESA balance Ksh12,304.00.", amount: 1440, sender: "JOHN KAMAU", code: "SJK7T2QH9X" },
-    { id: "m2", raw: "SJL8U3RI0Y Confirmed. Ksh850.00 received from MARY WAMBUI 07XX XXX 456 on 14/11/25 at 10:02 AM.", amount: 850, sender: "MARY WAMBUI", code: "SJL8U3RI0Y" },
-    { id: "m3", raw: "SJK6P1RR42 Confirmed. Ksh1,800.00 received from PETER KIBE 07XX XXX 789 on 13/11/25 at 4:48 PM.", amount: 1800, sender: "PETER KIBE", code: "SJK6P1RR42", matchedTxnId: "auto-1" },
-    { id: "m4", raw: "SJM9V4SJ1Z Confirmed. Ksh2,400.00 received from JANE OTIENO 07XX XXX 012 on 13/11/25 at 11:20 AM.", amount: 2400, sender: "JANE OTIENO", code: "SJM9V4SJ1Z" },
-    { id: "m5", raw: "SJN0W5TK2A Confirmed. Ksh500.00 received from SAMUEL NJOROGE on 12/11/25 at 8:10 AM.", amount: 500, sender: "SAMUEL NJOROGE", code: "SJN0W5TK2A" },
-  ];
-}
+// Seed functions removed - data now persists in localStorage
+// For demo purposes, you can manually add transactions through the UI
 
 export const TAG_PRESETS = ["#rent", "#restock", "#transport", "#supplies", "#utilities", "#wages", "#licenses", "#mpesa-fee"];
 export function formatKES(n: number) {

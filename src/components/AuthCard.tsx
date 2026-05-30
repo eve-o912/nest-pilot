@@ -1,25 +1,57 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
+import { actions } from "@/lib/store";
+import logo from "@/assets/logo.png";
 
 export function AuthCard({ mode }: { mode: "login" | "signup" }) {
   const navigate = useNavigate();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const isSignup = mode === "signup";
 
-  const onSubmit = (e: FormEvent) => {
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!identifier || !password) return;
-    navigate({ to: isSignup ? "/setup" : "/dashboard" });
+    setError("");
+    setLoading(true);
+
+    try {
+      if (isSignup) {
+        if (!email || !identifier || !password) {
+          throw new Error("All fields are required");
+        }
+        if (password.length < 6) {
+          throw new Error("Password must be at least 6 characters");
+        }
+        const result = actions.signup(email, identifier, password);
+        if (result.success) {
+          navigate({ to: "/setup" });
+        }
+      } else {
+        if (!identifier || !password) {
+          throw new Error("All fields are required");
+        }
+        const result = actions.login(identifier, password);
+        if (result.success) {
+          navigate({ to: "/dashboard" });
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Authentication failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <main className="flex min-h-screen flex-col bg-background">
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex h-14 max-w-[1280px] items-center justify-between px-6">
-          <Link to="/" className="text-base font-semibold tracking-tight">
-            Nest Pilot
+          <Link to="/" className="flex items-center">
+            <img src={logo} alt="Nest Pilot" className="h-7 w-auto" />
           </Link>
           <Link to="/" className="text-sm font-medium text-muted-foreground hover:text-foreground">
             ← Back home
@@ -38,7 +70,25 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
               : "Log in to keep your books in order."}
           </p>
 
+          {error && (
+            <div className="mb-4 rounded-sm border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+
           <form onSubmit={onSubmit} className="mt-7 space-y-4">
+            {isSignup && (
+              <Field label="Email">
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                  className="h-11 w-full rounded-sm border border-transparent bg-secondary px-3 text-sm outline-none transition-colors focus:border-ring focus:bg-card"
+                />
+              </Field>
+            )}
             <Field label="Phone Number or Email">
               <input
                 type="text"
@@ -60,11 +110,20 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
               />
             </Field>
 
+            {!isSignup && (
+              <div className="text-right">
+                <Link to="/reset-password" className="text-sm text-muted-foreground hover:text-foreground hover:underline">
+                  Forgot password?
+                </Link>
+              </div>
+            )}
+
             <button
               type="submit"
-              className="mt-2 h-11 w-full rounded-sm bg-sky text-sm font-semibold text-sky-foreground hover:opacity-90"
+              disabled={loading}
+              className="mt-2 h-11 w-full rounded-sm bg-sky text-sm font-semibold text-sky-foreground hover:opacity-90 disabled:opacity-50"
             >
-              {isSignup ? "Create Account" : "Log In"}
+              {loading ? "Processing..." : (isSignup ? "Create Account" : "Log In")}
             </button>
           </form>
 

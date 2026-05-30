@@ -55,7 +55,7 @@ function Expenses() {
         <p className="mt-1 text-sm text-muted-foreground">Tap pills to categorize. No folders, no dropdowns.</p>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_360px] xl:grid-cols-[1fr_400px]">
         <section>
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <button onClick={() => setActiveTag(null)} className="pill" data-active={activeTag === null}>All ({expenses.length})</button>
@@ -67,35 +67,61 @@ function Expenses() {
           </div>
 
           <div className="border-t border-border">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
-                  <th className="py-2 pr-4 font-medium">Date</th>
-                  <th className="py-2 pr-4 font-medium">Description</th>
-                  <th className="py-2 pr-4 font-medium">Tags</th>
-                  <th className="py-2 text-right font-medium">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((t) => (
-                  <tr key={t.id} className="border-t border-border">
-                    <td className="py-3 pr-4 font-mono text-xs text-muted-foreground">
-                      {new Date(t.date).toLocaleDateString("en-KE", { day: "2-digit", month: "short" })}
-                    </td>
-                    <td className="py-3 pr-4 font-medium">{t.description}</td>
-                    <td className="py-3 pr-4">
-                      <div className="flex flex-wrap gap-1">
+            {/* Desktop Table */}
+            <div className="hidden md:block">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
+                    <th className="py-2 pr-4 font-medium">Date</th>
+                    <th className="py-2 pr-4 font-medium">Description</th>
+                    <th className="py-2 pr-4 font-medium">Tags</th>
+                    <th className="py-2 text-right font-medium">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((t) => (
+                    <tr key={t.id} className="border-t border-border">
+                      <td className="py-3 pr-4 font-mono text-xs text-muted-foreground">
+                        {new Date(t.date).toLocaleDateString("en-KE", { day: "2-digit", month: "short" })}
+                      </td>
+                      <td className="py-3 pr-4 font-medium">{t.description}</td>
+                      <td className="py-3 pr-4">
+                        <div className="flex flex-wrap gap-1">
+                          {t.tags.map((tag) => <span key={tag} className="rounded-sm bg-secondary px-1.5 py-0.5 font-mono text-xs">{tag}</span>)}
+                        </div>
+                      </td>
+                      <td className="py-3 text-right font-mono font-semibold text-destructive">− {formatKES(t.amount)}</td>
+                    </tr>
+                  ))}
+                  {filtered.length === 0 && (
+                    <tr><td colSpan={4} className="border-t border-border py-10 text-center text-sm text-muted-foreground">No expenses for this tag.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-3">
+              {filtered.map((t) => (
+                <div key={t.id} className="border-t border-border py-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-sm">{t.description}</div>
+                      <div className="mt-1 flex flex-wrap gap-1">
                         {t.tags.map((tag) => <span key={tag} className="rounded-sm bg-secondary px-1.5 py-0.5 font-mono text-xs">{tag}</span>)}
                       </div>
-                    </td>
-                    <td className="py-3 text-right font-mono font-semibold text-destructive">− {formatKES(t.amount)}</td>
-                  </tr>
-                ))}
-                {filtered.length === 0 && (
-                  <tr><td colSpan={4} className="border-t border-border py-10 text-center text-sm text-muted-foreground">No expenses for this tag.</td></tr>
-                )}
-              </tbody>
-            </table>
+                    </div>
+                    <div className="font-mono font-semibold text-sm text-destructive">− {formatKES(t.amount)}</div>
+                  </div>
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    {new Date(t.date).toLocaleDateString("en-KE", { day: "2-digit", month: "short" })}
+                  </div>
+                </div>
+              ))}
+              {filtered.length === 0 && (
+                <div className="border-t border-border py-10 text-center text-sm text-muted-foreground">No expenses for this tag.</div>
+              )}
+            </div>
           </div>
         </section>
 
@@ -112,7 +138,7 @@ function Expenses() {
                 ))}
               </div>
             </div>
-            <button onClick={submit} className="w-full rounded-sm bg-destructive py-2.5 text-sm font-semibold text-destructive-foreground hover:opacity-90">
+            <button onClick={submit} disabled={!desc || !amount || tags.length === 0} className="w-full rounded-sm bg-destructive py-2.5 text-sm font-semibold text-destructive-foreground hover:opacity-90 disabled:opacity-50">
               Record Expense
             </button>
           </div>

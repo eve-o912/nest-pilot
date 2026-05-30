@@ -6,10 +6,13 @@ import {
   useRouter,
   HeadContent,
   Scripts,
+  useNavigate,
 } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
 import { AppHeader } from "@/components/AppHeader";
+import { useStore } from "@/lib/store";
+import { useEffect } from "react";
 
 function NotFoundComponent() {
   return (
@@ -111,6 +114,18 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const session = useStore((s) => s.session);
+  const navigate = useNavigate();
+  const router = useRouter();
+  const pathname = router.state.location.pathname;
+
+  const PUBLIC_ROUTES = ["/", "/login", "/signup", "/setup", "/reset-password"];
+
+  useEffect(() => {
+    if (!PUBLIC_ROUTES.includes(pathname) && !session) {
+      navigate({ to: "/login" });
+    }
+  }, [pathname, session, navigate]);
 
   return (
     <QueryClientProvider client={queryClient}>

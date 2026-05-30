@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ArrowRight, ArrowDownLeft, ArrowUpRight, Receipt } from "lucide-react";
 import heroShop from "@/assets/hero-shop.jpg";
+import logo from "@/assets/logo.png";
 
 export const Route = createFileRoute("/")({
   component: Landing,
@@ -20,8 +21,9 @@ function Landing() {
       {/* Top nav */}
       <header className="border-b border-border bg-card">
         <div className="mx-auto flex h-14 max-w-[1280px] items-center justify-between px-6">
-          <Link to="/" className="text-base font-semibold tracking-tight">
-            Nest Pilot
+          <Link to="/" className="flex items-center gap-2">
+            <img src={logo} alt="Nest Pilot" className="h-7 w-auto" />
+            <span className="text-base font-semibold tracking-tight">Nest Pilot</span>
           </Link>
           <Link
             to="/login"

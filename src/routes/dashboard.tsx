@@ -61,26 +61,26 @@ function Dashboard() {
       </section>
 
       {/* Quick Actions */}
-      <section className="mb-6 flex flex-wrap items-center gap-3">
+      <section className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
         <button
           onClick={() => setOpenSheet("in")}
-          className="inline-flex items-center gap-2 rounded-sm bg-success px-5 py-3 text-sm font-semibold text-success-foreground hover:opacity-90"
+          className="inline-flex items-center justify-center gap-2 rounded-sm bg-success px-5 py-3 text-sm font-semibold text-success-foreground hover:opacity-90"
         >
           <Plus className="h-4 w-4" /> Record Sale
         </button>
         <button
           onClick={() => setOpenSheet("out")}
-          className="inline-flex items-center gap-2 rounded-sm bg-destructive px-5 py-3 text-sm font-semibold text-destructive-foreground hover:opacity-90"
+          className="inline-flex items-center justify-center gap-2 rounded-sm bg-destructive px-5 py-3 text-sm font-semibold text-destructive-foreground hover:opacity-90"
         >
           <Plus className="h-4 w-4" /> Record Expense
         </button>
         <Link
           to="/receipts"
-          className="inline-flex items-center gap-2 rounded-sm border border-border bg-card px-5 py-3 text-sm font-semibold hover:bg-secondary"
+          className="inline-flex items-center justify-center gap-2 rounded-sm border border-border bg-card px-5 py-3 text-sm font-semibold hover:bg-secondary"
         >
           <Receipt className="h-4 w-4" /> Generate Receipt
         </Link>
-        <div className="ml-auto text-xs text-muted-foreground">
+        <div className="mt-2 text-xs text-muted-foreground sm:ml-auto sm:mt-0">
           Showing <span className="font-semibold text-foreground">{filtered.length}</span> of {transactions.length} transactions
           {filter !== "all" && (
             <button onClick={() => setFilter("all")} className="ml-2 underline">clear filter</button>
@@ -90,51 +90,85 @@ function Dashboard() {
 
       {/* Ledger */}
       <section>
-        <div className="mb-2 flex items-baseline justify-between">
+        <div className="mb-2 flex flex-col items-baseline gap-1 sm:flex-row sm:justify-between">
           <h2 className="text-base font-semibold">Recent Transactions</h2>
           <span className="text-xs uppercase tracking-wider text-muted-foreground">Ledger</span>
         </div>
         <div className="border-t border-border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
-                <th className="py-2 pr-4 font-medium">Date</th>
-                <th className="py-2 pr-4 font-medium">Description</th>
-                <th className="py-2 pr-4 font-medium">Method</th>
-                <th className="py-2 pr-4 font-medium">Tags</th>
-                <th className="py-2 pr-4 text-right font-medium">Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((t) => (
-                <tr key={t.id} className="border-t border-border align-top">
-                  <td className="py-3 pr-4 font-mono text-xs text-muted-foreground">
-                    {new Date(t.date).toLocaleDateString("en-KE", { day: "2-digit", month: "short" })}
-                  </td>
-                  <td className="py-3 pr-4">
-                    <div className="font-medium">{t.description}</div>
+          {/* Desktop Table */}
+          <div className="hidden md:block">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
+                  <th className="py-2 pr-4 font-medium">Date</th>
+                  <th className="py-2 pr-4 font-medium">Description</th>
+                  <th className="py-2 pr-4 font-medium">Method</th>
+                  <th className="py-2 pr-4 font-medium">Tags</th>
+                  <th className="py-2 pr-4 text-right font-medium">Amount</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map((t) => (
+                  <tr key={t.id} className="border-t border-border align-top">
+                    <td className="py-3 pr-4 font-mono text-xs text-muted-foreground">
+                      {new Date(t.date).toLocaleDateString("en-KE", { day: "2-digit", month: "short" })}
+                    </td>
+                    <td className="py-3 pr-4">
+                      <div className="font-medium">{t.description}</div>
+                      {t.reference && (
+                        <div className="font-mono text-xs text-muted-foreground">{t.reference}</div>
+                      )}
+                    </td>
+                    <td className="py-3 pr-4 text-muted-foreground">{t.method}</td>
+                    <td className="py-3 pr-4">
+                      <div className="flex flex-wrap gap-1">
+                        {t.tags.map((tag) => (
+                          <span key={tag} className="rounded-sm bg-secondary px-1.5 py-0.5 font-mono text-xs">{tag}</span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className={"py-3 pr-4 text-right font-mono font-semibold " + (t.type === "in" ? "text-success" : "text-destructive")}>
+                      {t.type === "in" ? "+" : "−"} {formatKES(t.amount)}
+                    </td>
+                  </tr>
+                ))}
+                {filtered.length === 0 && (
+                  <tr><td colSpan={5} className="py-10 text-center text-sm text-muted-foreground border-t border-border">No transactions for this filter.</td></tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="md:hidden space-y-3">
+            {filtered.map((t) => (
+              <div key={t.id} className="border-t border-border py-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm">{t.description}</div>
                     {t.reference && (
                       <div className="font-mono text-xs text-muted-foreground">{t.reference}</div>
                     )}
-                  </td>
-                  <td className="py-3 pr-4 text-muted-foreground">{t.method}</td>
-                  <td className="py-3 pr-4">
-                    <div className="flex flex-wrap gap-1">
+                    <div className="mt-1 flex flex-wrap gap-1">
                       {t.tags.map((tag) => (
                         <span key={tag} className="rounded-sm bg-secondary px-1.5 py-0.5 font-mono text-xs">{tag}</span>
                       ))}
                     </div>
-                  </td>
-                  <td className={"py-3 pr-4 text-right font-mono font-semibold " + (t.type === "in" ? "text-success" : "text-destructive")}>
+                  </div>
+                  <div className={"font-mono font-semibold text-sm " + (t.type === "in" ? "text-success" : "text-destructive")}>
                     {t.type === "in" ? "+" : "−"} {formatKES(t.amount)}
-                  </td>
-                </tr>
-              ))}
-              {filtered.length === 0 && (
-                <tr><td colSpan={5} className="py-10 text-center text-sm text-muted-foreground border-t border-border">No transactions for this filter.</td></tr>
-              )}
-            </tbody>
-          </table>
+                  </div>
+                </div>
+                <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
+                  <span>{new Date(t.date).toLocaleDateString("en-KE", { day: "2-digit", month: "short" })}</span>
+                  <span>{t.method}</span>
+                </div>
+              </div>
+            ))}
+            {filtered.length === 0 && (
+              <div className="py-10 text-center text-sm text-muted-foreground border-t border-border">No transactions for this filter.</div>
+            )}
+          </div>
         </div>
       </section>
 

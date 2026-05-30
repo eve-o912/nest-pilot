@@ -31,8 +31,8 @@ function Receipts() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
-        <aside className="border border-border bg-card">
-          <header className="border-b border-border px-4 py-3">
+        <aside className="border border-border bg-card max-h-[600px] overflow-y-auto">
+          <header className="border-b border-border px-4 py-3 sticky top-0 bg-card">
             <h2 className="text-sm font-semibold uppercase tracking-wider">Sales</h2>
           </header>
           <ul>
@@ -50,13 +50,18 @@ function Receipts() {
                 </button>
               </li>
             ))}
+            {sales.length === 0 && (
+              <li className="px-4 py-8 text-center text-sm text-muted-foreground">
+                No sales yet. Record a sale from the dashboard.
+              </li>
+            )}
           </ul>
         </aside>
 
         <section>
-          {selected && (
+          {selected ? (
             <>
-              <div className="mb-3 flex items-center gap-2">
+              <div className="mb-3 flex flex-wrap items-center gap-2">
                 <button onClick={copy} className="inline-flex items-center gap-2 rounded-sm border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-secondary">
                   <Copy className="h-4 w-4" /> {copied ? "Copied" : "Copy link"}
                 </button>
@@ -67,7 +72,7 @@ function Receipts() {
                 >
                   <Share2 className="h-4 w-4" /> Share to WhatsApp
                 </a>
-                <span className="ml-auto font-mono text-xs text-muted-foreground">{shareLink}</span>
+                <span className="ml-auto font-mono text-xs text-muted-foreground break-all">{shareLink}</span>
               </div>
 
               <div className="mx-auto max-w-md border border-border bg-card p-6 font-mono text-[13px] leading-relaxed">
@@ -107,6 +112,12 @@ function Receipts() {
                 </div>
               </div>
             </>
+          ) : (
+            <div className="flex items-center justify-center border border-border bg-card p-12 text-center">
+              <div>
+                <p className="text-sm text-muted-foreground">Select a sale to view its receipt</p>
+              </div>
+            </div>
           )}
         </section>
       </div>
