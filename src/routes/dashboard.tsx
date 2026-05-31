@@ -1,7 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { ArrowDownLeft, ArrowUpRight, Plus, Receipt } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
+import { ArrowDownLeft, ArrowUpRight, Plus, Receipt, Search, X } from "lucide-react";
 import { actions, formatKES, TAG_PRESETS, useStore, type TxnType } from "@/lib/store";
+import { supabase } from "@/lib/supabase";
 
 type Filter = "all" | "in" | "out";
 
@@ -207,8 +208,38 @@ function RecordSheet({ type, onClose }: { type: TxnType; onClose: () => void }) 
   const [amount, setAmount] = useState("");
   const [tags, setTags] = useState<string[]>(type === "in" ? ["#sale"] : []);
   const [method, setMethod] = useState<"Cash" | "M-Pesa" | "Card" | "Bank">("Cash");
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
+  const [customerSearch, setCustomerSearch] = useState("");
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+
+  useEffect(() => {
+    fetchCustomers();
+  }, []);
+
+  const fetchCustomers = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from("customers")
+        .select("*")
+        .eq("user_id", user.id)
+        .order("name", { ascending: true });
+
+      setCustomers(data || []);
+    } catch (error) {
+      console.error("Error fetching customers:", error);
+    }
+  };
 
   const toggleTag = (t: string) => setTags((p) => (p.includes(t) ? p.filter((x) => x !== t) : [...p, t]));
+
+  const filteredCustomers = customers.filter((c) =>
+    c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
+    (c.phone && c.phone.includes(customerSearch))
+  );
 
   const submit = () => {
     const n = parseFloat(amount);
@@ -235,6 +266,57 @@ function RecordSheet({ type, onClose }: { type: TxnType; onClose: () => void }) 
           <Field label="Amount (KES)">
             <input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-10 w-full rounded-sm border border-input bg-background px-3 font-mono text-sm outline-none focus:border-ring" placeholder="0" />
           </Field>
+          {type === "in" && (
+            <Field label="Link Customer (optional)">
+              <div className="relative">
+                <div className="flex items-center gap-2">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={selectedCustomer ? selectedCustomer.name : customerSearch}
+                    onChange={(e) => {
+                      setCustomerSearch(e.target.value);
+                      setShowCustomerDropdown(true);
+                    }}
+                    onFocus={() => setShowCustomerDropdown(true)}
+                    className="h-10 w-full rounded-sm border border-input bg-background pl-8 pr-3 text-sm outline-none focus:border-ring"
+                    placeholder="Search customers..."
+                  />
+                  {selectedCustomer && (
+                    <button
+                      onClick={() => {
+                        setSelectedCustomer(null);
+                        setCustomerSearch("");
+                      }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+                {showCustomerDropdown && filteredCustomers.length > 0 && (
+                  <div className="absolute z-10 mt-1 w-full rounded-sm border border-border bg-card shadow-lg max-h-48 overflow-y-auto">
+                    {filteredCustomers.map((customer) => (
+                      <button
+                        key={customer.id}
+                        onClick={() => {
+                          setSelectedCustomer(customer);
+                          setCustomerSearch(customer.name);
+                          setShowCustomerDropdown(false);
+                        }}
+                        className="w-full px-3 py-2 text-left text-sm hover:bg-secondary transition-colors"
+                      >
+                        <div className="font-medium">{customer.name}</div>
+                        {customer.phone && (
+                          <div className="text-xs text-muted-foreground">{customer.phone}</div>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </Field>
+          )}
           <Field label="Method">
             <div className="flex flex-wrap gap-2">
               {(["Cash", "M-Pesa", "Card", "Bank"] as const).map((m) => (

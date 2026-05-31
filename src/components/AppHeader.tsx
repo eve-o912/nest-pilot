@@ -3,9 +3,16 @@ import { Search, Settings, User, LogOut, Menu, X, Moon, Sun } from "lucide-react
 import { useStore, actions } from "@/lib/store";
 import { useState, useEffect } from "react";
 import logo from "@/assets/logo.png";
+import { supabase } from "@/lib/supabase";
 
 const NAV = [
   { to: "/dashboard", label: "Dashboard" },
+  { to: "/summary", label: "Summary" },
+  { to: "/expense-breakdown", label: "Expense Breakdown" },
+  { to: "/customers", label: "Customers" },
+  { to: "/credits", label: "Mkopo" },
+  { to: "/stock", label: "Stock" },
+  { to: "/mpesa", label: "M-Pesa" },
   { to: "/reconcile", label: "Reconcile" },
   { to: "/expenses", label: "Expenses" },
   { to: "/receivables", label: "Receivables" },
@@ -22,6 +29,28 @@ export function AppHeader() {
   const [showLogoutMenu, setShowLogoutMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+  const [creditsCount, setCreditsCount] = useState(0);
+
+  useEffect(() => {
+    fetchCreditsCount();
+  }, []);
+
+  const fetchCreditsCount = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from("credits")
+        .select("id")
+        .eq("user_id", user.id)
+        .in("status", ["unpaid", "partial"]);
+
+      setCreditsCount(data?.length || 0);
+    } catch (error) {
+      console.error("Error fetching credits count:", error);
+    }
+  };
 
   if (PUBLIC_ROUTES.includes(pathname)) return null;
 
@@ -58,18 +87,24 @@ export function AppHeader() {
         <nav className="hidden md:flex items-center gap-1">
           {NAV.map((n) => {
             const active = pathname === n.to || pathname.startsWith(n.to + "/");
+            const showBadge = n.to === "/credits" && creditsCount > 0;
             return (
               <Link
                 key={n.to}
                 to={n.to}
                 className={
-                  "rounded-sm px-3 py-1.5 text-sm font-medium transition-colors " +
+                  "rounded-sm px-3 py-1.5 text-sm font-medium transition-colors relative " +
                   (active
                     ? "bg-secondary text-foreground"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground")
                 }
               >
                 {n.label}
+                {showBadge && (
+                  <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center font-semibold">
+                    {creditsCount}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -143,19 +178,25 @@ export function AppHeader() {
           <nav className="flex flex-col p-4 gap-2">
             {NAV.map((n) => {
               const active = pathname === n.to || pathname.startsWith(n.to + "/");
+              const showBadge = n.to === "/credits" && creditsCount > 0;
               return (
                 <Link
                   key={n.to}
                   to={n.to}
                   onClick={() => setShowMobileMenu(false)}
                   className={
-                    "rounded-sm px-3 py-2 text-sm font-medium transition-colors " +
+                    "rounded-sm px-3 py-2 text-sm font-medium transition-colors relative " +
                     (active
                       ? "bg-secondary text-foreground"
                       : "text-muted-foreground hover:bg-secondary hover:text-foreground")
                   }
                 >
                   {n.label}
+                  {showBadge && (
+                    <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center font-semibold">
+                      {creditsCount}
+                    </span>
+                  )}
                 </Link>
               );
             })}
