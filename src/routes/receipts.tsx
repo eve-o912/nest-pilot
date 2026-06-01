@@ -58,14 +58,14 @@ function Receipts() {
                 </Link>
               </li>
             )}
-          </ul> className="border border-border bg-card min-h-[400px]"
+          </ul>
         </aside>
 
-        <section> p-4 border-b border-border
-          {selected ? (bakgoun
+        <section className="border border-border bg-card min-h-[400px]">
+          {selected ? (
             <>
-              <div className="mb-3 flex flex-wrap items-center gap-2">
-                <button onClick={copy} className="inline-flex items-center gap-2 rounded-sm border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-secondary">
+              <div className="mb-3 flex flex-wrap items-center gap-2 p-4 border-b border-border">
+                <button onClick={copy} className="inline-flex items-center gap-2 rounded-sm border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-secondary">
                   <Copy className="h-4 w-4" /> {copied ? "Copied" : "Copy link"}
                 </button>
                 <a
@@ -75,10 +75,10 @@ function Receipts() {
                 >
                   <Share2 className="h-4 w-4" /> Share to WhatsApp
                 </a>
-                <span className="ml-auto fontground break-all">{shareLink}</span>
+                <span className="ml-auto font-mono text-xs text-muted-foreground break-all">{shareLink}</span>
               </div>
 
-              <div className="mx-auto max-w-md border border-border bg-card p-6 font-mono text-[13px] leading-relaxed">
+              <div className="mx-auto max-w-md p-6 font-mono text-[13px] leading-relaxed">
                 <div className="text-center">
                   <div className="text-base font-bold uppercase">{business.name}</div>
                   <div className="text-xs">Receipt #{selected.id.toUpperCase()}</div>

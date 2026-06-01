@@ -115,9 +115,9 @@ function Dashboard() {
         )}
       </section>
 
-      {/*ion>"be4stify-be  h2 className="text-base font-semibold">Recent Transactions</h2>
-          <span className="text-xs uppercase tracking-wider text-muted-foreground">Ledger</span>
-        </div>
+      {/* Ledger */}
+      <section>
+        <h2 className="text-base font-semibold mb-4">Ledger</h2>
         <div className="border-t border-border">
           {/* Desktop Table */}
           <div className="hidden md:block">
