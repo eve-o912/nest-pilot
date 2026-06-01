@@ -34,31 +34,40 @@ function Dashboard() {
 
   return (
     <main className="mx-auto max-w-[1600px] px-6 pb-16">
-      {/* Sky blue summary banner */}
-      <section className="-mx-6 mb-6 bg-sky px-6 py-7 text-sky-foreground">
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-          <BannerStat
-            label="Total In"
-            value={totals.tin}
-            active={filter === "in"}
-            onClick={() => setFilter(filter === "in" ? "all" : "in")}
-            tone="in"
-          />
-          <BannerStat
-            label="Total Out"
-            value={totals.tout}
-            active={filter === "out"}
-            onClick={() => setFilter(filter === "out" ? "all" : "out")}
-            tone="out"
-          />
-          <BannerStat
-            label="Net Balance"
-            value={totals.net}
-            active={filter === "all"}
-            onClick={() => setFilter("all")}
-            tone="net"
-          />
-        </div>
+      {/* Header */}
+      <section className="mb-6">
+        <h1 className="text-2xl font-semibold">Dashboard</h1>
+        <p className="text-sm text-muted-foreground">
+          Total in, total out, and net balance at a glance
+        </p>
+      </section>
+
+      {/* Summary Cards */}
+      <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
+        <SummaryCard
+          label="Total In"
+          value={totals.tin}
+          color="success"
+          icon={<ArrowDownLeft className="h-4 w-4" />}
+          active={filter === "in"}
+          onClick={() => setFilter(filter === "in" ? "all" : "in")}
+        />
+        <SummaryCard
+          label="Total Out"
+          value={totals.tout}
+          color="destructive"
+          icon={<ArrowUpRight className="h-4 w-4" />}
+          active={filter === "out"}
+          onClick={() => setFilter(filter === "out" ? "all" : "out")}
+        />
+        <SummaryCard
+          label="Net Balance"
+          value={totals.net}
+          color={totals.net >= 0 ? "success" : "destructive"}
+          icon={null}
+          active={filter === "all"}
+          onClick={() => setFilter("all")}
+        />
       </section>
 
       {/* Quick Actions */}
@@ -178,25 +187,36 @@ function Dashboard() {
   );
 }
 
-function BannerStat({
-  label, value, active, onClick, tone,
-}: { label: string; value: number; active: boolean; onClick: () => void; tone: "in" | "out" | "net" }) {
-  const Icon = tone === "in" ? ArrowDownLeft : tone === "out" ? ArrowUpRight : null;
+function SummaryCard({
+  label, value, color, icon, active, onClick,
+}: { label: string; value: number; color: string; icon: React.ReactNode; active: boolean; onClick: () => void }) {
+  const getColorClass = () => {
+    switch (color) {
+      case "success":
+        return "text-success";
+      case "destructive":
+        return "text-destructive";
+      default:
+        return "text-foreground";
+    }
+  };
+
   return (
     <button
       onClick={onClick}
       className={
-        "group flex flex-col items-start rounded-sm border-2 px-5 py-4 text-left transition-colors " +
+        "group rounded-sm border-2 px-5 py-4 text-left transition-colors " +
         (active ? "border-foreground bg-card text-foreground" : "border-transparent hover:bg-card/40")
       }
     >
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider opacity-80">
-        {Icon && <Icon className="h-3.5 w-3.5" />} {label}
+      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        {icon}
+        {label}
       </div>
-      <div className="mt-1 font-mono text-3xl font-bold leading-tight tabular-nums">
+      <div className={`mt-1 font-mono text-3xl font-bold leading-tight tabular-nums ${getColorClass()}`}>
         {formatKES(Math.abs(value))}
       </div>
-      <div className="mt-1 text-xs opacity-80">
+      <div className="mt-1 text-xs text-muted-foreground">
         {active ? "Filtering ledger" : "Click to filter"}
       </div>
     </button>
@@ -212,6 +232,7 @@ function RecordSheet({ type, onClose }: { type: TxnType; onClose: () => void }) 
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [customerSearch, setCustomerSearch] = useState("");
   const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
 
   useEffect(() => {
     fetchCustomers();
@@ -245,7 +266,7 @@ function RecordSheet({ type, onClose }: { type: TxnType; onClose: () => void }) 
     const n = parseFloat(amount);
     if (!desc || !n) return;
     actions.addTransaction({
-      date: new Date().toISOString(),
+      date: date ? new Date(date).toISOString() : new Date().toISOString(),
       description: desc,
       type,
       amount: n,
@@ -260,6 +281,14 @@ function RecordSheet({ type, onClose }: { type: TxnType; onClose: () => void }) 
       <div className="w-full max-w-md rounded-t-md border border-border bg-card p-6 sm:rounded-md" onClick={(e) => e.stopPropagation()}>
         <h3 className="mb-4 text-lg font-semibold">{type === "in" ? "Record Sale" : "Record Expense"}</h3>
         <div className="space-y-3">
+          <Field label="Date">
+            <input 
+              type="date" 
+              value={date} 
+              onChange={(e) => setDate(e.target.value)} 
+              className="h-10 w-full rounded-sm border border-input bg-background px-3 text-sm outline-none focus:border-ring" 
+            />
+          </Field>
           <Field label="Description">
             <input value={desc} onChange={(e) => setDesc(e.target.value)} className="h-10 w-full rounded-sm border border-input bg-background px-3 text-sm outline-none focus:border-ring" placeholder={type === "in" ? "Bread x 5, sukuma…" : "Restock — sugar 25kg"} />
           </Field>
@@ -334,7 +363,7 @@ function RecordSheet({ type, onClose }: { type: TxnType; onClose: () => void }) 
         </div>
         <div className="mt-6 flex gap-2">
           <button onClick={onClose} className="flex-1 rounded-sm border border-border bg-background py-2.5 text-sm font-medium hover:bg-secondary">Cancel</button>
-          <button onClick={submit} className="flex-1 rounded-sm bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90">Save</button>
+          <button onClick={submit} disabled={!desc || !amount || !date} className="flex-1 rounded-sm bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50">Save</button>
         </div>
       </div>
     </div>

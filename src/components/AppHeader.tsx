@@ -1,22 +1,42 @@
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
-import { Search, Settings, User, LogOut, Menu, X, Moon, Sun } from "lucide-react";
+import { Search, Settings, User, LogOut, Menu, X, Moon, Sun, ChevronDown } from "lucide-react";
 import { useStore, actions } from "@/lib/store";
 import { useState, useEffect } from "react";
 import logo from "@/assets/logo.png";
 import { supabase } from "@/lib/supabase";
 
-const NAV = [
-  { to: "/dashboard", label: "Dashboard" },
-  { to: "/summary", label: "Summary" },
-  { to: "/expense-breakdown", label: "Expense Breakdown" },
-  { to: "/customers", label: "Customers" },
-  { to: "/credits", label: "Mkopo" },
-  { to: "/stock", label: "Stock" },
-  { to: "/mpesa", label: "M-Pesa" },
-  { to: "/reconcile", label: "Reconcile" },
-  { to: "/expenses", label: "Expenses" },
-  { to: "/receivables", label: "Receivables" },
-  { to: "/receipts", label: "Receipts" },
+const NAV_GROUPS = [
+  {
+    label: "Overview",
+    items: [
+      { to: "/dashboard", label: "Dashboard" },
+      { to: "/summary", label: "Summary" },
+    ]
+  },
+  {
+    label: "Transactions",
+    items: [
+      { to: "/expenses", label: "Expenses" },
+      { to: "/expense-breakdown", label: "Expense Breakdown" },
+      { to: "/receivables", label: "Receivables" },
+      { to: "/receipts", label: "Receipts" },
+    ]
+  },
+  {
+    label: "Business",
+    items: [
+      { to: "/customers", label: "Customers" },
+      { to: "/stock", label: "Stock" },
+      { to: "/credits", label: "Mkopo" },
+    ]
+  },
+  {
+    label: "Payments",
+    items: [
+      { to: "/mpesa", label: "M-Pesa" },
+      { to: "/reconcile", label: "Reconcile" },
+    ]
+  },
 ];
 
 const PUBLIC_ROUTES = ["/", "/login", "/signup", "/setup", "/reset-password"];
@@ -30,6 +50,7 @@ export function AppHeader() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [creditsCount, setCreditsCount] = useState(0);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
 
   useEffect(() => {
     fetchCreditsCount();
@@ -85,29 +106,51 @@ export function AppHeader() {
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-1">
-          {NAV.map((n) => {
-            const active = pathname === n.to || pathname.startsWith(n.to + "/");
-            const showBadge = n.to === "/credits" && creditsCount > 0;
-            return (
-              <Link
-                key={n.to}
-                to={n.to}
+          {NAV_GROUPS.map((group) => (
+            <div key={group.label} className="relative">
+              <button
+                onClick={() => setOpenDropdown(openDropdown === group.label ? null : group.label)}
                 className={
-                  "rounded-sm px-3 py-1.5 text-sm font-medium transition-colors relative " +
-                  (active
+                  "rounded-sm px-3 py-1.5 text-sm font-medium transition-colors flex items-center gap-1 " +
+                  (openDropdown === group.label
                     ? "bg-secondary text-foreground"
                     : "text-muted-foreground hover:bg-secondary hover:text-foreground")
                 }
               >
-                {n.label}
-                {showBadge && (
-                  <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center font-semibold">
-                    {creditsCount}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
+                {group.label}
+                <ChevronDown className="h-3 w-3" />
+              </button>
+              
+              {openDropdown === group.label && (
+                <div className="absolute top-full left-0 mt-1 w-48 rounded-sm border border-border bg-card p-2 shadow-lg z-50">
+                  {group.items.map((item) => {
+                    const active = pathname === item.to || pathname.startsWith(item.to + "/");
+                    const showBadge = item.to === "/credits" && creditsCount > 0;
+                    return (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        onClick={() => setOpenDropdown(null)}
+                        className={
+                          "block px-3 py-2 text-sm rounded-sm transition-colors relative " +
+                          (active
+                            ? "bg-secondary text-foreground"
+                            : "text-muted-foreground hover:bg-secondary hover:text-foreground")
+                        }
+                      >
+                        {item.label}
+                        {showBadge && (
+                          <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center font-semibold">
+                            {creditsCount}
+                          </span>
+                        )}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ))}
         </nav>
 
         <div className="ml-auto flex items-center gap-3">
@@ -176,30 +219,37 @@ export function AppHeader() {
       {showMobileMenu && (
         <div className="border-t border-border bg-card md:hidden">
           <nav className="flex flex-col p-4 gap-2">
-            {NAV.map((n) => {
-              const active = pathname === n.to || pathname.startsWith(n.to + "/");
-              const showBadge = n.to === "/credits" && creditsCount > 0;
-              return (
-                <Link
-                  key={n.to}
-                  to={n.to}
-                  onClick={() => setShowMobileMenu(false)}
-                  className={
-                    "rounded-sm px-3 py-2 text-sm font-medium transition-colors relative " +
-                    (active
-                      ? "bg-secondary text-foreground"
-                      : "text-muted-foreground hover:bg-secondary hover:text-foreground")
-                  }
-                >
-                  {n.label}
-                  {showBadge && (
-                    <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center font-semibold">
-                      {creditsCount}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
+            {NAV_GROUPS.map((group) => (
+              <div key={group.label}>
+                <p className="px-3 py-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  {group.label}
+                </p>
+                {group.items.map((item) => {
+                  const active = pathname === item.to || pathname.startsWith(item.to + "/");
+                  const showBadge = item.to === "/credits" && creditsCount > 0;
+                  return (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      onClick={() => setShowMobileMenu(false)}
+                      className={
+                        "block px-3 py-2 text-sm font-medium rounded-sm transition-colors relative ml-2 " +
+                        (active
+                          ? "bg-secondary text-foreground"
+                          : "text-muted-foreground hover:bg-secondary hover:text-foreground")
+                      }
+                    >
+                      {item.label}
+                      {showBadge && (
+                        <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center font-semibold">
+                          {creditsCount}
+                        </span>
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
+            ))}
             <div className="mt-2 pt-2 border-t border-border">
               <div className="relative">
                 <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
