@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Copy, Share2 } from "lucide-react";
 import { formatKES, useStore } from "@/lib/store";
@@ -51,15 +51,18 @@ function Receipts() {
               </li>
             ))}
             {sales.length === 0 && (
-              <li className="px-4 py-8 text-center text-sm text-muted-foreground">
-                No sales yet. Record a sale from the dashboard.
+              <li className="px-4 py-8 text-center">
+                <p className="text-sm text-muted-foreground mb-3">No sales yet.</p>
+                <Link to="/dashboard" className="text-sm text-primary hover:underline">
+                  Go to dashboard →
+                </Link>
               </li>
             )}
-          </ul>
+          </ul> className="border border-border bg-card min-h-[400px]"
         </aside>
 
-        <section>
-          {selected ? (
+        <section> p-4 border-b border-border
+          {selected ? (bakgoun
             <>
               <div className="mb-3 flex flex-wrap items-center gap-2">
                 <button onClick={copy} className="inline-flex items-center gap-2 rounded-sm border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-secondary">
@@ -72,7 +75,7 @@ function Receipts() {
                 >
                   <Share2 className="h-4 w-4" /> Share to WhatsApp
                 </a>
-                <span className="ml-auto font-mono text-xs text-muted-foreground break-all">{shareLink}</span>
+                <span className="ml-auto fontground break-all">{shareLink}</span>
               </div>
 
               <div className="mx-auto max-w-md border border-border bg-card p-6 font-mono text-[13px] leading-relaxed">

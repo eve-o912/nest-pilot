@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
-import { Check } from "lucide-react";
+import { Check, ChevronRight } from "lucide-react";
 import { actions, useStore, type Business } from "@/lib/store";
 
 const BUSINESS_TYPES = ["Retail", "Wholesale", "Services", "Food", "Salon", "Transport"];
@@ -44,14 +44,17 @@ function SettingsPage() {
               key={s.key}
               onClick={() => setActive(s.key)}
               className={
-                "flex flex-col items-start gap-0.5 border-l-2 px-3 py-2 text-left text-sm transition-colors " +
+                "flex items-center justify-between gap-2 border-l-2 px-3 py-2 text-left text-sm transition-colors " +
                 (active === s.key
                   ? "border-sky bg-secondary text-foreground"
                   : "border-transparent text-muted-foreground hover:text-foreground")
               }
             >
-              <span className="font-medium">{s.label}</span>
-              <span className="text-xs text-muted-foreground">{s.description}</span>
+              <div className="flex flex-col items-start gap-0.5">
+                <span className="font-medium">{s.label}</span>
+                <span className="text-xs text-muted-foreground">{s.description}</span>
+              </div>
+              <ChevronRight className={`h-4 w-4 transition-transform ${active === s.key ? 'rotate-90' : ''}`} />
             </button>
           ))}
         </nav>

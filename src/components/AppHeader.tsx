@@ -10,15 +10,12 @@ const NAV_GROUPS = [
     label: "Overview",
     items: [
       { to: "/dashboard", label: "Dashboard" },
-      { to: "/summary", label: "Summary" },
     ]
   },
   {
     label: "Transactions",
     items: [
       { to: "/expenses", label: "Expenses" },
-      { to: "/expense-breakdown", label: "Expense Breakdown" },
-      { to: "/receivables", label: "Receivables" },
       { to: "/receipts", label: "Receipts" },
     ]
   },
@@ -34,7 +31,6 @@ const NAV_GROUPS = [
     label: "Payments",
     items: [
       { to: "/mpesa", label: "M-Pesa" },
-      { to: "/reconcile", label: "Reconcile" },
     ]
   },
 ];

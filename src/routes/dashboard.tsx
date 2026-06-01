@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
-import { ArrowDownLeft, ArrowUpRight, Plus, Receipt, Search, X } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Plus, Receipt, Search, X, ChevronRight } from "lucide-react";
 import { actions, formatKES, TAG_PRESETS, useStore, type TxnType } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 
@@ -51,6 +51,8 @@ function Dashboard() {
           icon={<ArrowDownLeft className="h-4 w-4" />}
           active={filter === "in"}
           onClick={() => setFilter(filter === "in" ? "all" : "in")}
+          subtitle="This month"
+          showChevron={true}
         />
         <SummaryCard
           label="Total Out"
@@ -59,6 +61,8 @@ function Dashboard() {
           icon={<ArrowUpRight className="h-4 w-4" />}
           active={filter === "out"}
           onClick={() => setFilter(filter === "out" ? "all" : "out")}
+          subtitle="This month"
+          showChevron={true}
         />
         <SummaryCard
           label="Net Balance"
@@ -67,41 +71,51 @@ function Dashboard() {
           icon={null}
           active={filter === "all"}
           onClick={() => setFilter("all")}
+          subtitle="Total in − Total out"
+          showChevron={false}
         />
       </section>
+
+      {/* No transactions prompt */}
+      {transactions.length === 0 && (
+        <div className="mb-6 text-center">
+          <Link to="/dashboard" className="text-sm text-primary hover:underline">
+            Record your first sale →
+          </Link>
+        </div>
+      )}
 
       {/* Quick Actions */}
       <section className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
         <button
           onClick={() => setOpenSheet("in")}
-          className="inline-flex items-center justify-center gap-2 rounded-sm bg-success px-5 py-3 text-sm font-semibold text-success-foreground hover:opacity-90"
+          className="inline-flex items-center justify-center gap-2 rounded-sm bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground hover:opacity-90 w-full sm:w-auto"
         >
           <Plus className="h-4 w-4" /> Record Sale
         </button>
         <button
           onClick={() => setOpenSheet("out")}
-          className="inline-flex items-center justify-center gap-2 rounded-sm bg-destructive px-5 py-3 text-sm font-semibold text-destructive-foreground hover:opacity-90"
+          className="inline-flex items-center justify-center gap-2 rounded-sm border border-border bg-card px-5 py-3 text-sm font-semibold hover:bg-secondary w-full sm:w-auto"
         >
           <Plus className="h-4 w-4" /> Record Expense
         </button>
         <Link
           to="/receipts"
-          className="inline-flex items-center justify-center gap-2 rounded-sm border border-border bg-card px-5 py-3 text-sm font-semibold hover:bg-secondary"
+          className="inline-flex items-center justify-center gap-2 rounded-sm border border-border bg-card px-5 py-3 text-sm font-semibold hover:bg-secondary w-full sm:w-auto"
         >
           <Receipt className="h-4 w-4" /> Generate Receipt
         </Link>
-        <div className="mt-2 text-xs text-muted-foreground sm:ml-auto sm:mt-0">
-          Showing <span className="font-semibold text-foreground">{filtered.length}</span> of {transactions.length} transactions
-          {filter !== "all" && (
-            <button onClick={() => setFilter("all")} className="ml-2 underline">clear filter</button>
-          )}
-        </div>
+        {transactions.length > 0 && (
+          <div className="mt-2 text-xs text-muted-foreground sm:ml-auto sm:mt-0">
+            Showing <span className="font-semibold text-foreground">{filtered.length}</span> of {transactions.length} transactions
+            {filter !== "all" && (
+              <button onClick={() => setFilter("all")} className="ml-2 underline">clear filter</button>
+            )}
+          </div>
+        )}
       </section>
 
-      {/* Ledger */}
-      <section>
-        <div className="mb-2 flex flex-col items-baseline gap-1 sm:flex-row sm:justify-between">
-          <h2 className="text-base font-semibold">Recent Transactions</h2>
+      {/*ion>"be4stify-be  h2 className="text-base font-semibold">Recent Transactions</h2>
           <span className="text-xs uppercase tracking-wider text-muted-foreground">Ledger</span>
         </div>
         <div className="border-t border-border">
@@ -115,6 +129,7 @@ function Dashboard() {
                   <th className="py-2 pr-4 font-medium">Method</th>
                   <th className="py-2 pr-4 font-medium">Tags</th>
                   <th className="py-2 pr-4 text-right font-medium">Amount</th>
+                  <th className="py-2 pl-4 text-right font-medium"></th>
                 </tr>
               </thead>
               <tbody>
@@ -132,18 +147,25 @@ function Dashboard() {
                     <td className="py-3 pr-4 text-muted-foreground">{t.method}</td>
                     <td className="py-3 pr-4">
                       <div className="flex flex-wrap gap-1">
-                        {t.tags.map((tag) => (
+                        {t.tags.length > 0 ? t.tags.map((tag) => (
                           <span key={tag} className="rounded-sm bg-secondary px-1.5 py-0.5 font-mono text-xs">{tag}</span>
-                        ))}
+                        )) : <span className="text-muted-foreground text-xs">—</span>}
                       </div>
                     </td>
                     <td className={"py-3 pr-4 text-right font-mono font-semibold " + (t.type === "in" ? "text-success" : "text-destructive")}>
                       {t.type === "in" ? "+" : "−"} {formatKES(t.amount)}
                     </td>
+                    <td className="py-3 pl-4 text-right">
+                      {t.type === "in" && (
+                        <Link to="/receipts" className="text-xs text-primary hover:underline">
+                          View receipt
+                        </Link>
+                      )}
+                    </td>
                   </tr>
                 ))}
                 {filtered.length === 0 && (
-                  <tr><td colSpan={5} className="py-10 text-center text-sm text-muted-foreground border-t border-border">No transactions for this filter.</td></tr>
+                  <tr><td colSpan={6} className="py-10 text-center text-sm text-muted-foreground border-t border-border">No transactions for this filter.</td></tr>
                 )}
               </tbody>
             </table>
@@ -160,9 +182,9 @@ function Dashboard() {
                       <div className="font-mono text-xs text-muted-foreground">{t.reference}</div>
                     )}
                     <div className="mt-1 flex flex-wrap gap-1">
-                      {t.tags.map((tag) => (
+                      {t.tags.length > 0 ? t.tags.map((tag) => (
                         <span key={tag} className="rounded-sm bg-secondary px-1.5 py-0.5 font-mono text-xs">{tag}</span>
-                      ))}
+                      )) : <span className="text-muted-foreground text-xs">—</span>}
                     </div>
                   </div>
                   <div className={"font-mono font-semibold text-sm " + (t.type === "in" ? "text-success" : "text-destructive")}>
@@ -173,6 +195,13 @@ function Dashboard() {
                   <span>{new Date(t.date).toLocaleDateString("en-KE", { day: "2-digit", month: "short" })}</span>
                   <span>{t.method}</span>
                 </div>
+                {t.type === "in" && (
+                  <div className="mt-2 text-right">
+                    <Link to="/receipts" className="text-xs text-primary hover:underline">
+                      View receipt
+                    </Link>
+                  </div>
+                )}
               </div>
             ))}
             {filtered.length === 0 && (
@@ -188,8 +217,8 @@ function Dashboard() {
 }
 
 function SummaryCard({
-  label, value, color, icon, active, onClick,
-}: { label: string; value: number; color: string; icon: React.ReactNode; active: boolean; onClick: () => void }) {
+  label, value, color, icon, active, onClick, subtitle, showChevron,
+}: { label: string; value: number; color: string; icon: React.ReactNode; active: boolean; onClick: () => void; subtitle: string; showChevron: boolean }) {
   const getColorClass = () => {
     switch (color) {
       case "success":
@@ -209,15 +238,18 @@ function SummaryCard({
         (active ? "border-foreground bg-card text-foreground" : "border-transparent hover:bg-card/40")
       }
     >
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-        {icon}
-        {label}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+          {icon}
+          {label}
+        </div>
+        {showChevron && <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${active ? 'rotate-90' : ''}`} />}
       </div>
       <div className={`mt-1 font-mono text-3xl font-bold leading-tight tabular-nums ${getColorClass()}`}>
         {formatKES(Math.abs(value))}
       </div>
       <div className="mt-1 text-xs text-muted-foreground">
-        {active ? "Filtering ledger" : "Click to filter"}
+        {subtitle}
       </div>
     </button>
   );
