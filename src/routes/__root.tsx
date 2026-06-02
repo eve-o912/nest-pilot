@@ -10,7 +10,8 @@ import {
 } from "@tanstack/react-router";
 
 import appCss from "../styles.css?url";
-import { AppHeader } from "@/components/AppHeader";
+import { Sidebar } from "@/components/Sidebar";
+import { TopBar } from "@/components/TopBar";
 import { useStore } from "@/lib/store";
 import { useEffect } from "react";
 
@@ -127,11 +128,22 @@ function RootComponent() {
     }
   }, [pathname, session, navigate]);
 
+  const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
+
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen bg-background">
-        <AppHeader />
-        <Outlet />
+      <div className="min-h-screen bg-[#F8FAFC]">
+        {isPublicRoute ? (
+          <Outlet />
+        ) : (
+          <>
+            <Sidebar />
+            <TopBar />
+            <main className="ml-[240px] mt-16 p-6 max-w-[1400px]">
+              <Outlet />
+            </main>
+          </>
+        )}
       </div>
     </QueryClientProvider>
   );

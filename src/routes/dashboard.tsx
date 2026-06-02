@@ -1,412 +1,387 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState, useEffect } from "react";
-import { ArrowDownLeft, ArrowUpRight, Plus, Receipt, Search, X, ChevronRight } from "lucide-react";
-import { actions, formatKES, TAG_PRESETS, useStore, type TxnType } from "@/lib/store";
+import { useState, useEffect } from "react";
+import { Plus, TrendingUp, TrendingDown, DollarSign, FileText, MoreHorizontal, ChevronDown } from "lucide-react";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { supabase } from "@/lib/supabase";
-
-type Filter = "all" | "in" | "out";
+import { formatKES } from "@/lib/store";
 
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
   head: () => ({
     meta: [
       { title: "Dashboard — Nest Pilot" },
-      { name: "description", content: "Total in, total out, and net balance at a glance." },
+      { name: "description", content: "Business operating system dashboard with hero metrics and recent invoices." },
     ],
   }),
 });
 
 function Dashboard() {
-  const transactions = useStore((s) => s.transactions);
-  const [filter, setFilter] = useState<Filter>("all");
-  const [openSheet, setOpenSheet] = useState<TxnType | null>(null);
-
-  const totals = useMemo(() => {
-    const tin = transactions.filter((t) => t.type === "in").reduce((a, b) => a + b.amount, 0);
-    const tout = transactions.filter((t) => t.type === "out").reduce((a, b) => a + b.amount, 0);
-    return { tin, tout, net: tin - tout };
-  }, [transactions]);
-
-  const filtered = useMemo(
-    () => (filter === "all" ? transactions : transactions.filter((t) => t.type === filter)),
-    [transactions, filter],
-  );
-
-  return (
-    <main className="mx-auto max-w-[1600px] px-6 pb-16">
-      {/* Header */}
-      <section className="mb-6">
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
-        <p className="text-sm text-muted-foreground">
-          Total in, total out, and net balance at a glance
-        </p>
-      </section>
-
-      {/* Summary Cards */}
-      <section className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-        <SummaryCard
-          label="Total In"
-          value={totals.tin}
-          color="success"
-          icon={<ArrowDownLeft className="h-4 w-4" />}
-          active={filter === "in"}
-          onClick={() => setFilter(filter === "in" ? "all" : "in")}
-          subtitle="This month"
-          showChevron={true}
-        />
-        <SummaryCard
-          label="Total Out"
-          value={totals.tout}
-          color="destructive"
-          icon={<ArrowUpRight className="h-4 w-4" />}
-          active={filter === "out"}
-          onClick={() => setFilter(filter === "out" ? "all" : "out")}
-          subtitle="This month"
-          showChevron={true}
-        />
-        <SummaryCard
-          label="Net Balance"
-          value={totals.net}
-          color={totals.net >= 0 ? "success" : "destructive"}
-          icon={null}
-          active={filter === "all"}
-          onClick={() => setFilter("all")}
-          subtitle="Total in − Total out"
-          showChevron={false}
-        />
-      </section>
-
-      {/* No transactions prompt */}
-      {transactions.length === 0 && (
-        <div className="mb-6 text-center">
-          <Link to="/dashboard" className="text-sm text-primary hover:underline">
-            Record your first sale →
-          </Link>
-        </div>
-      )}
-
-      {/* Quick Actions */}
-      <section className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-3">
-        <button
-          onClick={() => setOpenSheet("in")}
-          className="inline-flex items-center justify-center gap-2 rounded-sm bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground hover:opacity-90 w-full sm:w-auto"
-        >
-          <Plus className="h-4 w-4" /> Record Sale
-        </button>
-        <button
-          onClick={() => setOpenSheet("out")}
-          className="inline-flex items-center justify-center gap-2 rounded-sm border border-border bg-card px-5 py-3 text-sm font-semibold hover:bg-secondary w-full sm:w-auto"
-        >
-          <Plus className="h-4 w-4" /> Record Expense
-        </button>
-        <Link
-          to="/receipts"
-          className="inline-flex items-center justify-center gap-2 rounded-sm border border-border bg-card px-5 py-3 text-sm font-semibold hover:bg-secondary w-full sm:w-auto"
-        >
-          <Receipt className="h-4 w-4" /> Generate Receipt
-        </Link>
-        {transactions.length > 0 && (
-          <div className="mt-2 text-xs text-muted-foreground sm:ml-auto sm:mt-0">
-            Showing <span className="font-semibold text-foreground">{filtered.length}</span> of {transactions.length} transactions
-            {filter !== "all" && (
-              <button onClick={() => setFilter("all")} className="ml-2 underline">clear filter</button>
-            )}
-          </div>
-        )}
-      </section>
-
-      {/* Ledger */}
-      <section>
-        <h2 className="text-base font-semibold mb-4">Ledger</h2>
-        <div className="border-t border-border">
-          {/* Desktop Table */}
-          <div className="hidden md:block">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs uppercase tracking-wider text-muted-foreground">
-                  <th className="py-2 pr-4 font-medium">Date</th>
-                  <th className="py-2 pr-4 font-medium">Description</th>
-                  <th className="py-2 pr-4 font-medium">Method</th>
-                  <th className="py-2 pr-4 font-medium">Tags</th>
-                  <th className="py-2 pr-4 text-right font-medium">Amount</th>
-                  <th className="py-2 pl-4 text-right font-medium"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((t) => (
-                  <tr key={t.id} className="border-t border-border align-top">
-                    <td className="py-3 pr-4 font-mono text-xs text-muted-foreground">
-                      {new Date(t.date).toLocaleDateString("en-KE", { day: "2-digit", month: "short" })}
-                    </td>
-                    <td className="py-3 pr-4">
-                      <div className="font-medium">{t.description}</div>
-                      {t.reference && (
-                        <div className="font-mono text-xs text-muted-foreground">{t.reference}</div>
-                      )}
-                    </td>
-                    <td className="py-3 pr-4 text-muted-foreground">{t.method}</td>
-                    <td className="py-3 pr-4">
-                      <div className="flex flex-wrap gap-1">
-                        {t.tags.length > 0 ? t.tags.map((tag) => (
-                          <span key={tag} className="rounded-sm bg-secondary px-1.5 py-0.5 font-mono text-xs">{tag}</span>
-                        )) : <span className="text-muted-foreground text-xs">—</span>}
-                      </div>
-                    </td>
-                    <td className={"py-3 pr-4 text-right font-mono font-semibold " + (t.type === "in" ? "text-success" : "text-destructive")}>
-                      {t.type === "in" ? "+" : "−"} {formatKES(t.amount)}
-                    </td>
-                    <td className="py-3 pl-4 text-right">
-                      {t.type === "in" && (
-                        <Link to="/receipts" className="text-xs text-primary hover:underline">
-                          View receipt
-                        </Link>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {filtered.length === 0 && (
-                  <tr><td colSpan={6} className="py-10 text-center text-sm text-muted-foreground border-t border-border">No transactions for this filter.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile Card View */}
-          <div className="md:hidden space-y-3">
-            {filtered.map((t) => (
-              <div key={t.id} className="border-t border-border py-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm">{t.description}</div>
-                    {t.reference && (
-                      <div className="font-mono text-xs text-muted-foreground">{t.reference}</div>
-                    )}
-                    <div className="mt-1 flex flex-wrap gap-1">
-                      {t.tags.length > 0 ? t.tags.map((tag) => (
-                        <span key={tag} className="rounded-sm bg-secondary px-1.5 py-0.5 font-mono text-xs">{tag}</span>
-                      )) : <span className="text-muted-foreground text-xs">—</span>}
-                    </div>
-                  </div>
-                  <div className={"font-mono font-semibold text-sm " + (t.type === "in" ? "text-success" : "text-destructive")}>
-                    {t.type === "in" ? "+" : "−"} {formatKES(t.amount)}
-                  </div>
-                </div>
-                <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{new Date(t.date).toLocaleDateString("en-KE", { day: "2-digit", month: "short" })}</span>
-                  <span>{t.method}</span>
-                </div>
-                {t.type === "in" && (
-                  <div className="mt-2 text-right">
-                    <Link to="/receipts" className="text-xs text-primary hover:underline">
-                      View receipt
-                    </Link>
-                  </div>
-                )}
-              </div>
-            ))}
-            {filtered.length === 0 && (
-              <div className="py-10 text-center text-sm text-muted-foreground border-t border-border">No transactions for this filter.</div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {openSheet && <RecordSheet type={openSheet} onClose={() => setOpenSheet(null)} />}
-    </main>
-  );
-}
-
-function SummaryCard({
-  label, value, color, icon, active, onClick, subtitle, showChevron,
-}: { label: string; value: number; color: string; icon: React.ReactNode; active: boolean; onClick: () => void; subtitle: string; showChevron: boolean }) {
-  const getColorClass = () => {
-    switch (color) {
-      case "success":
-        return "text-success";
-      case "destructive":
-        return "text-destructive";
-      default:
-        return "text-foreground";
-    }
-  };
-
-  return (
-    <button
-      onClick={onClick}
-      className={
-        "group rounded-sm border-2 px-5 py-4 text-left transition-colors " +
-        (active ? "border-foreground bg-card text-foreground" : "border-transparent hover:bg-card/40")
-      }
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-          {icon}
-          {label}
-        </div>
-        {showChevron && <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${active ? 'rotate-90' : ''}`} />}
-      </div>
-      <div className={`mt-1 font-mono text-3xl font-bold leading-tight tabular-nums ${getColorClass()}`}>
-        {formatKES(Math.abs(value))}
-      </div>
-      <div className="mt-1 text-xs text-muted-foreground">
-        {subtitle}
-      </div>
-    </button>
-  );
-}
-
-function RecordSheet({ type, onClose }: { type: TxnType; onClose: () => void }) {
-  const [desc, setDesc] = useState("");
-  const [amount, setAmount] = useState("");
-  const [tags, setTags] = useState<string[]>(type === "in" ? ["#sale"] : []);
-  const [method, setMethod] = useState<"Cash" | "M-Pesa" | "Card" | "Bank">("Cash");
-  const [customers, setCustomers] = useState<any[]>([]);
-  const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
-  const [customerSearch, setCustomerSearch] = useState("");
-  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false);
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [metrics, setMetrics] = useState({
+    revenueToday: 0,
+    cashThisMonth: 0,
+    expensesThisMonth: 0,
+    outstanding: 0,
+  });
+  const [revenueData, setRevenueData] = useState<any[]>([]);
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchCustomers();
+    fetchDashboardData();
   }, []);
 
-  const fetchCustomers = async () => {
+  const fetchDashboardData = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data } = await supabase
-        .from("customers")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("name", { ascending: true });
+      // Fetch today's revenue (income transactions from today)
+      const today = new Date().toISOString().split('T')[0];
+      const { data: todayIncome } = await supabase
+        .from('transactions')
+        .select('amount')
+        .eq('user_id', user.id)
+        .eq('type', 'income')
+        .gte('created_at', today);
 
-      setCustomers(data || []);
+      const revenueToday = todayIncome?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
+
+      // Fetch this month's cash (income)
+      const thisMonth = new Date();
+      thisMonth.setDate(1);
+      const monthStart = thisMonth.toISOString().split('T')[0];
+      const { data: monthIncome } = await supabase
+        .from('transactions')
+        .select('amount')
+        .eq('user_id', user.id)
+        .eq('type', 'income')
+        .gte('created_at', monthStart);
+
+      const cashThisMonth = monthIncome?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
+
+      // Fetch this month's expenses
+      const { data: monthExpenses } = await supabase
+        .from('transactions')
+        .select('amount')
+        .eq('user_id', user.id)
+        .eq('type', 'expense')
+        .gte('created_at', monthStart);
+
+      const expensesThisMonth = monthExpenses?.reduce((sum, t) => sum + (t.amount || 0), 0) || 0;
+
+      // Fetch outstanding invoices
+      const { data: outstandingInvoices } = await supabase
+        .from('invoices')
+        .select('amount_due')
+        .eq('user_id', user.id)
+        .in('status', ['unpaid', 'partial', 'overdue']);
+
+      const outstanding = outstandingInvoices?.reduce((sum, i) => sum + (i.amount_due || 0), 0) || 0;
+
+      // Fetch recent invoices
+      const { data: recentInvoices } = await supabase
+        .from('invoices')
+        .select(`
+          *,
+          customers (
+            business_name,
+            contact_name
+          )
+        `)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      setMetrics({
+        revenueToday,
+        cashThisMonth,
+        expensesThisMonth,
+        outstanding,
+      });
+      setInvoices(recentInvoices || []);
+      
+      // Generate mock revenue trend data for the chart
+      const trendData = Array.from({ length: 30 }, (_, i) => ({
+        date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        revenue: Math.floor(Math.random() * 50000) + 20000,
+        expenses: Math.floor(Math.random() * 30000) + 10000,
+      }));
+      setRevenueData(trendData);
+      
+      setLoading(false);
     } catch (error) {
-      console.error("Error fetching customers:", error);
+      console.error('Error fetching dashboard data:', error);
+      setLoading(false);
     }
   };
 
-  const toggleTag = (t: string) => setTags((p) => (p.includes(t) ? p.filter((x) => x !== t) : [...p, t]));
-
-  const filteredCustomers = customers.filter((c) =>
-    c.name.toLowerCase().includes(customerSearch.toLowerCase()) ||
-    (c.phone && c.phone.includes(customerSearch))
-  );
-
-  const submit = () => {
-    const n = parseFloat(amount);
-    if (!desc || !n) return;
-    actions.addTransaction({
-      date: date ? new Date(date).toISOString() : new Date().toISOString(),
-      description: desc,
-      type,
-      amount: n,
-      tags,
-      method,
-    });
-    onClose();
-  };
-
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-foreground/30 sm:items-center" onClick={onClose}>
-      <div className="w-full max-w-md rounded-t-md border border-border bg-card p-6 sm:rounded-md" onClick={(e) => e.stopPropagation()}>
-        <h3 className="mb-4 text-lg font-semibold">{type === "in" ? "Record Sale" : "Record Expense"}</h3>
-        <div className="space-y-3">
-          <Field label="Date">
-            <input 
-              type="date" 
-              value={date} 
-              onChange={(e) => setDate(e.target.value)} 
-              className="h-10 w-full rounded-sm border border-input bg-background px-3 text-sm outline-none focus:border-ring" 
-            />
-          </Field>
-          <Field label="Description">
-            <input value={desc} onChange={(e) => setDesc(e.target.value)} className="h-10 w-full rounded-sm border border-input bg-background px-3 text-sm outline-none focus:border-ring" placeholder={type === "in" ? "Bread x 5, sukuma…" : "Restock — sugar 25kg"} />
-          </Field>
-          <Field label="Amount (KES)">
-            <input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className="h-10 w-full rounded-sm border border-input bg-background px-3 font-mono text-sm outline-none focus:border-ring" placeholder="0" />
-          </Field>
-          {type === "in" && (
-            <Field label="Link Customer (optional)">
-              <div className="relative">
-                <div className="flex items-center gap-2">
-                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <input
-                    type="text"
-                    value={selectedCustomer ? selectedCustomer.name : customerSearch}
-                    onChange={(e) => {
-                      setCustomerSearch(e.target.value);
-                      setShowCustomerDropdown(true);
-                    }}
-                    onFocus={() => setShowCustomerDropdown(true)}
-                    className="h-10 w-full rounded-sm border border-input bg-background pl-8 pr-3 text-sm outline-none focus:border-ring"
-                    placeholder="Search customers..."
-                  />
-                  {selectedCustomer && (
-                    <button
-                      onClick={() => {
-                        setSelectedCustomer(null);
-                        setCustomerSearch("");
-                      }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-                {showCustomerDropdown && filteredCustomers.length > 0 && (
-                  <div className="absolute z-10 mt-1 w-full rounded-sm border border-border bg-card shadow-lg max-h-48 overflow-y-auto">
-                    {filteredCustomers.map((customer) => (
-                      <button
-                        key={customer.id}
-                        onClick={() => {
-                          setSelectedCustomer(customer);
-                          setCustomerSearch(customer.name);
-                          setShowCustomerDropdown(false);
-                        }}
-                        className="w-full px-3 py-2 text-left text-sm hover:bg-secondary transition-colors"
-                      >
-                        <div className="font-medium">{customer.name}</div>
-                        {customer.phone && (
-                          <div className="text-xs text-muted-foreground">{customer.phone}</div>
-                        )}
+    <div className="space-y-6">
+      {/* Hero Metrics Section */}
+      <section>
+        <h2 className="text-lg font-semibold text-foreground mb-4">Hero metrics</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Small Metric Cards */}
+          <MetricCard
+            title="Revenue"
+            value={metrics.revenueToday}
+            subtitle="Cash Today"
+            trendData={revenueData.slice(-7)}
+            color="#3B82F6"
+          />
+          <MetricCard
+            title="Cash This Month"
+            value={metrics.cashThisMonth}
+            subtitle="Cash This Month"
+            trendData={revenueData.slice(-30)}
+            color="#3B82F6"
+          />
+          <MetricCard
+            title="Expenses"
+            value={metrics.expensesThisMonth}
+            subtitle="This Month"
+            trendData={revenueData.slice(-30).map(d => ({ ...d, revenue: d.expenses }))}
+            color="#EF4444"
+          />
+          <MetricCard
+            title="Outstanding"
+            value={metrics.outstanding}
+            subtitle="Unpaid Invoices"
+            trendData={revenueData.slice(-30)}
+            color="#F59E0B"
+          />
+        </div>
+      </section>
+
+      {/* Revenue Trend Chart */}
+      <section className="bg-white rounded-xl border border-[#E2E8F0] p-6 shadow-sm">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h3 className="text-lg font-semibold text-foreground">Revenue Trend</h3>
+            <p className="text-sm text-muted-foreground">KES {formatKES(metrics.cashThisMonth)} • February 2026</p>
+          </div>
+          <div className="flex gap-2">
+            <button className="px-3 py-1.5 text-sm font-medium rounded-lg bg-[#EFF6FF] text-[#3B82F6]">This Month</button>
+            <button className="px-3 py-1.5 text-sm font-medium rounded-lg text-muted-foreground hover:bg-secondary/50">Last 3 Months</button>
+            <button className="px-3 py-1.5 text-sm font-medium rounded-lg text-muted-foreground hover:bg-secondary/50">This Year</button>
+          </div>
+        </div>
+        <div className="h-[300px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={revenueData}>
+              <defs>
+                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.1}/>
+                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                </linearGradient>
+                <linearGradient id="colorExpenses" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#EF4444" stopOpacity={0.1}/>
+                  <stop offset="95%" stopColor="#EF4444" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+              <XAxis 
+                dataKey="date" 
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: '#94A3B8', fontSize: 12 }}
+              />
+              <YAxis 
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: '#94A3B8', fontSize: 12 }}
+                tickFormatter={(value) => `KES ${(value / 1000).toFixed(0)}k`}
+              />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: '#FFFFFF', 
+                  border: '1px solid #E2E8F0',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+                }}
+              />
+              <Area 
+                type="monotone" 
+                dataKey="revenue" 
+                stroke="#3B82F6" 
+                strokeWidth={2}
+                fillOpacity={1} 
+                fill="url(#colorRevenue)" 
+              />
+              <Area 
+                type="monotone" 
+                dataKey="expenses" 
+                stroke="#EF4444" 
+                strokeWidth={2}
+                fillOpacity={1} 
+                fill="url(#colorExpenses)" 
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </section>
+
+      {/* Recent Invoices Table */}
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-foreground">Recent Invoices</h2>
+          <div className="flex items-center gap-3">
+            <button className="px-3 py-1.5 text-sm font-medium rounded-lg text-muted-foreground hover:bg-secondary/50">
+              All Invoices
+            </button>
+            <button className="px-3 py-1.5 text-sm font-medium rounded-lg text-muted-foreground hover:bg-secondary/50">
+              Outstanding Invoices
+            </button>
+            <Link
+              to="/invoices"
+              className="inline-flex items-center gap-2 rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3B82F6]/90 transition-colors"
+            >
+              <Plus className="h-4 w-4" />
+              New
+              <ChevronDown className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
+          {loading ? (
+            <div className="p-8 text-center text-muted-foreground">Loading...</div>
+          ) : invoices.length === 0 ? (
+            <div className="p-8 text-center">
+              <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <p className="text-muted-foreground mb-4">No invoices yet</p>
+              <Link
+                to="/invoices"
+                className="inline-flex items-center gap-2 rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3B82F6]/90 transition-colors"
+              >
+                <Plus className="h-4 w-4" />
+                Create your first invoice
+              </Link>
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead>
+                <tr className="border-b border-[#E2E8F0] text-left text-xs uppercase tracking-wider text-muted-foreground">
+                  <th className="px-6 py-3 font-medium">Customer</th>
+                  <th className="px-6 py-3 font-medium">Invoice #</th>
+                  <th className="px-6 py-3 font-medium">Status</th>
+                  <th className="px-6 py-3 font-medium text-right">Amount</th>
+                  <th className="px-6 py-3 font-medium">Due Date</th>
+                  <th className="px-6 py-3 font-medium">Assigned</th>
+                  <th className="px-6 py-3 font-medium text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoices.map((invoice) => (
+                  <tr key={invoice.id} className="border-b border-[#E2E8F0] hover:bg-[#F8FAFC] transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EFF6FF] text-[#3B82F6] text-sm font-medium">
+                          {(invoice.customers?.business_name || 'C').charAt(0)}
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">{invoice.customers?.business_name || 'Unknown'}</p>
+                          <p className="text-xs text-muted-foreground">{invoice.customers?.contact_name || ''}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm font-mono text-muted-foreground">{invoice.invoice_number}</td>
+                    <td className="px-6 py-4">
+                      <StatusBadge status={invoice.status} />
+                    </td>
+                    <td className="px-6 py-4 text-right font-mono text-sm font-medium text-foreground">
+                      {formatKES(invoice.total_amount)}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-muted-foreground">
+                      {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString('en-KE', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-xs font-medium text-muted-foreground">
+                        U
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <button className="text-muted-foreground hover:text-foreground transition-colors">
+                        <MoreHorizontal className="h-4 w-4" />
                       </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </Field>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
-          <Field label="Method">
-            <div className="flex flex-wrap gap-2">
-              {(["Cash", "M-Pesa", "Card", "Bank"] as const).map((m) => (
-                <button key={m} onClick={() => setMethod(m)} className="pill" data-active={method === m}>{m}</button>
-              ))}
-            </div>
-          </Field>
-          <Field label="Tags">
-            <div className="flex flex-wrap gap-2">
-              {(type === "in" ? ["#sale", "#service", "#tip"] : TAG_PRESETS).map((t) => (
-                <button key={t} onClick={() => toggleTag(t)} className="pill" data-active={tags.includes(t)}>{t}</button>
-              ))}
-            </div>
-          </Field>
         </div>
-        <div className="mt-6 flex gap-2">
-          <button onClick={onClose} className="flex-1 rounded-sm border border-border bg-background py-2.5 text-sm font-medium hover:bg-secondary">Cancel</button>
-          <button onClick={submit} disabled={!desc || !amount || !date} className="flex-1 rounded-sm bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90 disabled:opacity-50">Save</button>
-        </div>
+      </section>
+    </div>
+  );
+}
+
+function MetricCard({ title, value, subtitle, trendData, color }: {
+  title: string;
+  value: number;
+  subtitle: string;
+  trendData: any[];
+  color: string;
+}) {
+  return (
+    <div className="bg-white rounded-xl border border-[#E2E8F0] p-5 shadow-sm">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-medium text-muted-foreground">{title}</h3>
+        {value > 0 ? (
+          <TrendingUp className="h-4 w-4 text-[#10B981]" />
+        ) : (
+          <TrendingDown className="h-4 w-4 text-[#EF4444]" />
+        )}
+      </div>
+      <p className="text-2xl font-semibold text-foreground mb-1">{formatKES(value)}</p>
+      <p className="text-xs text-muted-foreground mb-3">{subtitle}</p>
+      <div className="h-[60px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={trendData}>
+            <defs>
+              <linearGradient id={`color${title}`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor={color} stopOpacity={0.1}/>
+                <stop offset="95%" stopColor={color} stopOpacity={0}/>
+              </linearGradient>
+            </defs>
+            <Area 
+              type="monotone" 
+              dataKey="revenue" 
+              stroke={color} 
+              strokeWidth={1.5}
+              fillOpacity={1} 
+              fill={`url(#color${title})`} 
+            />
+          </AreaChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function StatusBadge({ status }: { status: string }) {
+  const styles = {
+    paid: 'bg-[#D1FAE5] text-[#065F46]',
+    partial: 'bg-[#FEF3C7] text-[#92400E]',
+    overdue: 'bg-[#FEE2E2] text-[#991B1B]',
+    draft: 'bg-[#F1F5F9] text-[#64748B]',
+    sent: 'bg-[#DBEAFE] text-[#1E40AF]',
+  };
+
+  const labels = {
+    paid: 'Paid',
+    partial: 'Partial',
+    overdue: 'Overdue',
+    draft: 'Draft',
+    sent: 'Sent',
+  };
+
+  const style = styles[status as keyof typeof styles] || styles.draft;
+  const label = labels[status as keyof typeof labels] || status;
+
   return (
-    <label className="block">
-      <span className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
-      {children}
-    </label>
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${style}`}>
+      {label}
+    </span>
   );
 }

@@ -1,22 +1,29 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
-import { Search, Plus, MessageCircle, X, Clock, DollarSign } from "lucide-react";
+import { Search, Plus, MessageCircle, X, Clock, DollarSign, MoreHorizontal, Phone, Mail, MapPin } from "lucide-react";
 import { supabase, type Transaction } from "@/lib/supabase";
 import { formatDistanceToNow } from "date-fns";
+import { formatKES } from "@/lib/store";
 
 interface Customer {
   id: string;
   user_id: string;
-  name: string;
+  business_name: string;
+  contact_name: string | null;
   phone: string | null;
+  email: string | null;
+  kra_pin: string | null;
+  address: string | null;
   notes: string | null;
   created_at: string;
 }
 
 interface CustomerWithStats extends Customer {
   total_purchased: number;
+  outstanding_balance: number;
   last_transaction_date: string | null;
   transaction_count: number;
+  reliability_score: 'excellent' | 'good' | 'late' | 'high_risk';
 }
 
 export const Route = createFileRoute("/customers")({
@@ -39,8 +46,12 @@ function Customers() {
   const [customerTransactions, setCustomerTransactions] = useState<Transaction[]>([]);
   
   // Add Customer form state
-  const [newCustomerName, setNewCustomerName] = useState("");
+  const [newBusinessName, setNewBusinessName] = useState("");
+  const [newContactName, setNewContactName] = useState("");
   const [newCustomerPhone, setNewCustomerPhone] = useState("");
+  const [newCustomerEmail, setNewCustomerEmail] = useState("");
+  const [newKraPin, setNewKraPin] = useState("");
+  const [newAddress, setNewAddress] = useState("");
   const [newCustomerNotes, setNewCustomerNotes] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const [duplicateWarning, setDuplicateWarning] = useState("");
@@ -64,28 +75,44 @@ function Customers() {
 
       if (customersError) throw customersError;
 
-      // Fetch transactions for each customer to calculate stats
+      // Fetch invoices for each customer to calculate stats
       const customersWithStats = await Promise.all(
         (customersData || []).map(async (customer) => {
-          const { data: transactionsData } = await supabase
-            .from("transactions")
-            .select("amount, created_at")
-            .eq("customer_id", customer.id)
-            .eq("type", "income");
+          const { data: invoicesData } = await supabase
+            .from("invoices")
+            .select("total_amount, amount_due, created_at, status")
+            .eq("customer_id", customer.id);
 
-          const transactions = transactionsData || [];
-          const total_purchased = transactions.reduce((sum, t) => sum + Number(t.amount), 0);
-          const last_transaction_date = transactions.length > 0
-            ? transactions.reduce((latest, t) => 
-                new Date(t.created_at) > new Date(latest.created_at) ? t : latest
+          const invoices = invoicesData || [];
+          const total_purchased = invoices.reduce((sum, i) => sum + Number(i.total_amount), 0);
+          const outstanding_balance = invoices
+            .filter(i => i.status === 'unpaid' || i.status === 'partial' || i.status === 'overdue')
+            .reduce((sum, i) => sum + Number(i.amount_due), 0);
+          const last_transaction_date = invoices.length > 0
+            ? invoices.reduce((latest, i) => 
+                new Date(i.created_at) > new Date(latest.created_at) ? i : latest
               ).created_at
             : null;
+
+          // Calculate reliability score based on payment history
+          const paidInvoices = invoices.filter(i => i.status === 'paid').length;
+          const totalInvoices = invoices.length;
+          let reliability_score: 'excellent' | 'good' | 'late' | 'high_risk' = 'good';
+          if (totalInvoices > 0) {
+            const onTimeRatio = paidInvoices / totalInvoices;
+            if (onTimeRatio >= 0.9) reliability_score = 'excellent';
+            else if (onTimeRatio >= 0.7) reliability_score = 'good';
+            else if (onTimeRatio >= 0.5) reliability_score = 'late';
+            else reliability_score = 'high_risk';
+          }
 
           return {
             ...customer,
             total_purchased,
+            outstanding_balance,
             last_transaction_date,
-            transaction_count: transactions.length,
+            transaction_count: invoices.length,
+            reliability_score,
           };
         })
       );
@@ -104,7 +131,8 @@ function Customers() {
     const query = searchQuery.toLowerCase();
     return customers.filter(
       (customer) =>
-        customer.name.toLowerCase().includes(query) ||
+        customer.business_name.toLowerCase().includes(query) ||
+        (customer.contact_name && customer.contact_name.toLowerCase().includes(query)) ||
         (customer.phone && customer.phone.includes(query))
     );
   }, [customers, searchQuery]);
@@ -130,13 +158,13 @@ function Customers() {
 
       const { data } = await supabase
         .from("customers")
-        .select("name")
+        .select("business_name")
         .eq("user_id", user.id)
         .eq("phone", phone)
         .single();
 
       if (data) {
-        setDuplicateWarning(`This number is already saved as ${data.name}`);
+        setDuplicateWarning(`This number is already saved as ${data.business_name}`);
         return true;
       }
       setDuplicateWarning("");
@@ -149,7 +177,7 @@ function Customers() {
   };
 
   const handleAddCustomer = async () => {
-    if (!newCustomerName.trim()) return;
+    if (!newBusinessName.trim()) return;
     
     const isValidPhone = validatePhone(newCustomerPhone);
     if (!isValidPhone) return;
@@ -165,15 +193,23 @@ function Customers() {
         .from("customers")
         .insert({
           user_id: user.id,
-          name: newCustomerName,
+          business_name: newBusinessName,
+          contact_name: newContactName || null,
           phone: newCustomerPhone,
+          email: newCustomerEmail || null,
+          kra_pin: newKraPin || null,
+          address: newAddress || null,
           notes: newCustomerNotes || null,
         });
 
       if (error) throw error;
 
-      setNewCustomerName("");
+      setNewBusinessName("");
+      setNewContactName("");
       setNewCustomerPhone("");
+      setNewCustomerEmail("");
+      setNewKraPin("");
+      setNewAddress("");
       setNewCustomerNotes("");
       setPhoneError("");
       setDuplicateWarning("");
@@ -203,7 +239,7 @@ function Customers() {
 
   const handleWhatsApp = (customer: Customer) => {
     if (!customer.phone) return;
-    const message = `Habari ${customer.name}!`;
+    const message = `Habari ${customer.business_name}!`;
     const encodedMessage = encodeURIComponent(message);
     const phoneWithoutZero = customer.phone.replace(/^0/, "");
     window.open(`https://wa.me/254${phoneWithoutZero}?text=${encodedMessage}`, "_blank");
@@ -268,11 +304,20 @@ function Customers() {
       ) : (
         <section className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
           {filteredCustomers.map((customer) => (
-            <div key={customer.id} className="rounded-sm border border-border bg-card p-5">
+            <div key={customer.id} className="rounded-xl border border-[#E2E8F0] bg-white p-5 shadow-sm">
               <div className="mb-4">
-                <h3 className="font-semibold text-lg">{customer.name}</h3>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold text-lg text-foreground">{customer.business_name}</h3>
+                  <ReliabilityBadge score={customer.reliability_score} />
+                </div>
+                {customer.contact_name && (
+                  <p className="text-sm text-muted-foreground">{customer.contact_name}</p>
+                )}
                 {customer.phone && (
-                  <p className="text-sm text-muted-foreground">{customer.phone}</p>
+                  <p className="text-sm text-muted-foreground flex items-center gap-1">
+                    <Phone className="h-3 w-3" />
+                    {customer.phone}
+                  </p>
                 )}
               </div>
               
@@ -280,8 +325,15 @@ function Customers() {
                 <div className="flex items-center gap-2 text-sm">
                   <DollarSign className="h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">Total Purchased:</span>
-                  <span className="font-mono font-semibold">{formatKES(customer.total_purchased)}</span>
+                  <span className="font-mono font-semibold text-foreground">{formatKES(customer.total_purchased)}</span>
                 </div>
+                {customer.outstanding_balance > 0 && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <DollarSign className="h-4 w-4 text-destructive" />
+                    <span className="text-muted-foreground">Outstanding:</span>
+                    <span className="font-mono font-semibold text-destructive">{formatKES(customer.outstanding_balance)}</span>
+                  </div>
+                )}
                 {customer.last_transaction_date && (
                   <div className="flex items-center gap-2 text-sm">
                     <Clock className="h-4 w-4 text-muted-foreground" />
@@ -294,14 +346,14 @@ function Customers() {
               <div className="flex gap-2">
                 <button
                   onClick={() => handleViewHistory(customer)}
-                  className="flex-1 rounded-sm border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-secondary"
+                  className="flex-1 rounded-lg border border-[#E2E8F0] bg-white px-3 py-2 text-sm font-medium hover:bg-[#F8FAFC] transition-colors"
                 >
                   View History
                 </button>
                 {customer.phone && (
                   <button
                     onClick={() => handleWhatsApp(customer)}
-                    className="flex-1 rounded-sm border border-border bg-background px-3 py-2 text-sm font-medium hover:bg-secondary"
+                    className="flex-1 rounded-lg border border-[#E2E8F0] bg-white px-3 py-2 text-sm font-medium hover:bg-[#F8FAFC] transition-colors"
                   >
                     <MessageCircle className="h-4 w-4 inline mr-1" /> WhatsApp
                   </button>
@@ -321,8 +373,12 @@ function Customers() {
               <button
                 onClick={() => {
                   setShowAddModal(false);
-                  setNewCustomerName("");
+                  setNewBusinessName("");
+                  setNewContactName("");
                   setNewCustomerPhone("");
+                  setNewCustomerEmail("");
+                  setNewKraPin("");
+                  setNewAddress("");
                   setNewCustomerNotes("");
                   setPhoneError("");
                   setDuplicateWarning("");
@@ -336,14 +392,27 @@ function Customers() {
             <div className="space-y-4">
               <div>
                 <label className="block mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  Name *
+                  Business Name *
                 </label>
                 <input
                   type="text"
-                  value={newCustomerName}
-                  onChange={(e) => setNewCustomerName(e.target.value)}
-                  className="h-10 w-full rounded-sm border border-input bg-background px-3 text-sm outline-none focus:border-ring"
-                  placeholder="Customer name"
+                  value={newBusinessName}
+                  onChange={(e) => setNewBusinessName(e.target.value)}
+                  className="h-10 w-full rounded-lg border border-[#E2E8F0] bg-white px-3 text-sm outline-none focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
+                  placeholder="Business name"
+                />
+              </div>
+              
+              <div>
+                <label className="block mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Contact Name
+                </label>
+                <input
+                  type="text"
+                  value={newContactName}
+                  onChange={(e) => setNewContactName(e.target.value)}
+                  className="h-10 w-full rounded-lg border border-[#E2E8F0] bg-white px-3 text-sm outline-none focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
+                  placeholder="Contact person name"
                 />
               </div>
               
@@ -361,7 +430,7 @@ function Customers() {
                   onBlur={() => {
                     if (newCustomerPhone) checkDuplicatePhone(newCustomerPhone);
                   }}
-                  className="h-10 w-full rounded-sm border border-input bg-background px-3 text-sm outline-none focus:border-ring"
+                  className="h-10 w-full rounded-lg border border-[#E2E8F0] bg-white px-3 text-sm outline-none focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
                   placeholder="0712345678"
                 />
                 {phoneError && (
@@ -371,6 +440,45 @@ function Customers() {
                   <p className="mt-1 text-xs text-warning">{duplicateWarning}</p>
                 )}
               </div>
+
+              <div>
+                <label className="block mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Email
+                </label>
+                <input
+                  type="email"
+                  value={newCustomerEmail}
+                  onChange={(e) => setNewCustomerEmail(e.target.value)}
+                  className="h-10 w-full rounded-lg border border-[#E2E8F0] bg-white px-3 text-sm outline-none focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
+                  placeholder="email@example.com"
+                />
+              </div>
+
+              <div>
+                <label className="block mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  KRA PIN
+                </label>
+                <input
+                  type="text"
+                  value={newKraPin}
+                  onChange={(e) => setNewKraPin(e.target.value)}
+                  className="h-10 w-full rounded-lg border border-[#E2E8F0] bg-white px-3 text-sm outline-none focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
+                  placeholder="A00XXXXXXXXX"
+                />
+              </div>
+
+              <div>
+                <label className="block mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                  Address
+                </label>
+                <input
+                  type="text"
+                  value={newAddress}
+                  onChange={(e) => setNewAddress(e.target.value)}
+                  className="h-10 w-full rounded-lg border border-[#E2E8F0] bg-white px-3 text-sm outline-none focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20"
+                  placeholder="Physical address"
+                />
+              </div>
               
               <div>
                 <label className="block mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -379,7 +487,7 @@ function Customers() {
                 <textarea
                   value={newCustomerNotes}
                   onChange={(e) => setNewCustomerNotes(e.target.value)}
-                  className="h-20 w-full rounded-sm border border-input bg-background px-3 text-sm outline-none focus:border-ring resize-none"
+                  className="h-20 w-full rounded-lg border border-[#E2E8F0] bg-white px-3 text-sm outline-none focus:border-[#3B82F6] focus:ring-2 focus:ring-[#3B82F6]/20 resize-none"
                   placeholder="Additional notes about this customer..."
                 />
               </div>
@@ -389,19 +497,23 @@ function Customers() {
               <button
                 onClick={() => {
                   setShowAddModal(false);
-                  setNewCustomerName("");
+                  setNewBusinessName("");
+                  setNewContactName("");
                   setNewCustomerPhone("");
+                  setNewCustomerEmail("");
+                  setNewKraPin("");
+                  setNewAddress("");
                   setNewCustomerNotes("");
                   setPhoneError("");
                   setDuplicateWarning("");
                 }}
-                className="flex-1 rounded-sm border border-border bg-background py-2.5 text-sm font-medium hover:bg-secondary"
+                className="flex-1 rounded-lg border border-[#E2E8F0] bg-white px-4 py-2.5 text-sm font-medium hover:bg-[#F8FAFC] transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddCustomer}
-                className="flex-1 rounded-sm bg-primary py-2.5 text-sm font-semibold text-primary-foreground hover:opacity-90"
+                className="flex-1 rounded-lg bg-[#3B82F6] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#3B82F6]/90 transition-colors"
               >
                 Save
               </button>
@@ -412,11 +524,14 @@ function Customers() {
 
       {/* View History Modal */}
       {showHistoryModal && selectedCustomer && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-foreground/30">
-          <div className="w-full max-w-2xl rounded-sm border border-border bg-card p-6 m-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-full max-w-2xl rounded-xl border border-[#E2E8F0] bg-white p-6 m-4 max-h-[90vh] overflow-y-auto shadow-lg">
             <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="text-lg font-semibold">{selectedCustomer.name}</h3>
+                <h3 className="text-lg font-semibold text-foreground">{selectedCustomer.business_name}</h3>
+                {selectedCustomer.contact_name && (
+                  <p className="text-sm text-muted-foreground">{selectedCustomer.contact_name}</p>
+                )}
                 {selectedCustomer.phone && (
                   <p className="text-sm text-muted-foreground">{selectedCustomer.phone}</p>
                 )}
@@ -435,13 +550,13 @@ function Customers() {
 
             <div className="space-y-3">
               {customerTransactions.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">No transactions yet.</p>
+                <p className="text-center text-muted-foreground py-8">No invoices yet.</p>
               ) : (
                 customerTransactions.map((txn) => (
-                  <div key={txn.id} className="border-t border-border pt-3">
+                  <div key={txn.id} className="border-t border-[#E2E8F0] pt-3">
                     <div className="flex justify-between items-start">
                       <div>
-                        <p className="text-sm font-medium">{txn.tag || "Uncategorized"}</p>
+                        <p className="text-sm font-medium text-foreground">{txn.tag || "Uncategorized"}</p>
                         <p className="text-xs text-muted-foreground">
                           {new Date(txn.created_at).toLocaleDateString("en-KE", {
                             day: "2-digit",
@@ -462,10 +577,10 @@ function Customers() {
             </div>
 
             {customerTransactions.length > 0 && (
-              <div className="mt-4 pt-4 border-t border-border">
+              <div className="mt-4 pt-4 border-t border-[#E2E8F0]">
                 <div className="flex justify-between items-center">
-                  <span className="font-semibold">Total Spent</span>
-                  <span className="font-mono font-bold text-lg">{formatKES(selectedCustomer.total_purchased)}</span>
+                  <span className="font-semibold text-foreground">Total Spent</span>
+                  <span className="font-mono font-bold text-lg text-[#3B82F6]">{formatKES(selectedCustomer.total_purchased)}</span>
                 </div>
               </div>
             )}
@@ -473,5 +588,27 @@ function Customers() {
         </div>
       )}
     </main>
+  );
+}
+
+function ReliabilityBadge({ score }: { score: 'excellent' | 'good' | 'late' | 'high_risk' }) {
+  const styles = {
+    excellent: 'bg-[#D1FAE5] text-[#065F46]',
+    good: 'bg-[#DBEAFE] text-[#1E40AF]',
+    late: 'bg-[#FEF3C7] text-[#92400E]',
+    high_risk: 'bg-[#FEE2E2] text-[#991B1B]',
+  };
+
+  const labels = {
+    excellent: 'Excellent',
+    good: 'Good',
+    late: 'Late',
+    high_risk: 'High Risk',
+  };
+
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${styles[score]}`}>
+      {labels[score]}
+    </span>
   );
 }
