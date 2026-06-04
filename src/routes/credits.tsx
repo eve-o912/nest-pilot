@@ -121,9 +121,9 @@ function Credits() {
       const threeMonthsAgo = subMonths(new Date(), 3);
       const { data: transactions } = await supabase
         .from('transactions')
-        .select('amount, type, date')
+        .select('amount, type, created_at')
         .eq('user_id', userId)
-        .gte('date', threeMonthsAgo.toISOString());
+        .gte('created_at', threeMonthsAgo.toISOString());
 
       // Calculate monthly averages
       let totalRevenue = 0;
@@ -132,9 +132,10 @@ function Credits() {
 
       if (transactions) {
         transactions.forEach(t => {
-          if (t.type === 'in') {
+          const tp = (t.type || '').toString().toLowerCase();
+          if (tp === 'income' || tp === 'in') {
             totalRevenue += Number(t.amount);
-          } else if (t.type === 'out') {
+          } else if (tp === 'expense' || tp === 'out') {
             totalExpenses += Number(t.amount);
           }
           transactionCount++;

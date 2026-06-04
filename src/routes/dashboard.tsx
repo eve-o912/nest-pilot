@@ -25,6 +25,7 @@ function Dashboard() {
   const [revenueData, setRevenueData] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedRange, setSelectedRange] = useState<'month' | '3months' | 'year'>('month');
 
   useEffect(() => {
     fetchDashboardData();
@@ -161,9 +162,21 @@ function Dashboard() {
             <p className="text-sm text-muted-foreground">KES {formatKES(metrics.cashThisMonth)} • February 2026</p>
           </div>
           <div className="flex gap-2">
-            <button className="px-3 py-1.5 text-sm font-medium rounded-lg bg-[#EFF6FF] text-[#3B82F6]">This Month</button>
-            <button className="px-3 py-1.5 text-sm font-medium rounded-lg text-muted-foreground hover:bg-secondary/50">Last 3 Months</button>
-            <button className="px-3 py-1.5 text-sm font-medium rounded-lg text-muted-foreground hover:bg-secondary/50">This Year</button>
+            <button
+              onClick={() => setSelectedRange('month')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-lg ${selectedRange === 'month' ? 'bg-[#EFF6FF] text-[#3B82F6]' : 'text-muted-foreground hover:bg-secondary/50'}`}>
+              This Month
+            </button>
+            <button
+              onClick={() => setSelectedRange('3months')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-lg ${selectedRange === '3months' ? 'bg-[#EFF6FF] text-[#3B82F6]' : 'text-muted-foreground hover:bg-secondary/50'}`}>
+              Last 3 Months
+            </button>
+            <button
+              onClick={() => setSelectedRange('year')}
+              className={`px-3 py-1.5 text-sm font-medium rounded-lg ${selectedRange === 'year' ? 'bg-[#EFF6FF] text-[#3B82F6]' : 'text-muted-foreground hover:bg-secondary/50'}`}>
+              This Year
+            </button>
           </div>
         </div>
         <div className="h-[300px]">
@@ -226,12 +239,18 @@ function Dashboard() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-foreground">Recent Invoices</h2>
           <div className="flex items-center gap-3">
-            <button className="px-3 py-1.5 text-sm font-medium rounded-lg text-muted-foreground hover:bg-secondary/50">
+            <Link
+              to="/invoices"
+              className="px-3 py-1.5 text-sm font-medium rounded-lg text-muted-foreground hover:bg-secondary/50"
+            >
               All Invoices
-            </button>
-            <button className="px-3 py-1.5 text-sm font-medium rounded-lg text-muted-foreground hover:bg-secondary/50">
+            </Link>
+            <Link
+              to="/invoices?filter=outstanding"
+              className="px-3 py-1.5 text-sm font-medium rounded-lg text-muted-foreground hover:bg-secondary/50"
+            >
               Outstanding Invoices
-            </button>
+            </Link>
             <Link
               to="/invoices"
               className="inline-flex items-center gap-2 rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3B82F6]/90 transition-colors"
@@ -301,9 +320,13 @@ function Dashboard() {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-right">
-                      <button className="text-muted-foreground hover:text-foreground transition-colors">
+                      <Link
+                        to={`/invoices/${invoice.id}`}
+                        className="text-muted-foreground hover:text-foreground transition-colors"
+                        aria-label={`Open invoice ${invoice.invoice_number}`}
+                      >
                         <MoreHorizontal className="h-4 w-4" />
-                      </button>
+                      </Link>
                     </td>
                   </tr>
                 ))}

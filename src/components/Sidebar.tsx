@@ -3,7 +3,8 @@ import {
   ChevronRight, ChevronDown, LayoutDashboard, 
   FileText, Users, Receipt, TrendingUp, 
   Package, RefreshCw, Smartphone, CreditCard,
-  Settings, LogOut, User, Bell, Search
+  Settings, LogOut, User, Bell, Search,
+  BookOpen, Zap, Briefcase, Clock
 } from "lucide-react";
 import { useState } from "react";
 import { useStore } from "@/lib/store";
@@ -32,31 +33,41 @@ const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: "",
+    label: "Main",
     expandable: false,
     items: [
       { to: "/dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
-    ],
-  },
-  {
-    label: "",
-    expandable: false,
-    items: [
       { to: "/today", label: "Today", icon: <LayoutDashboard className="h-4 w-4" /> },
-    ],
-  },
-  {
-    label: "",
-    expandable: false,
-    items: [
       { to: "/customers", label: "Customers", icon: <Users className="h-4 w-4" /> },
+      { to: "/expenses", label: "Expenses", icon: <Receipt className="h-4 w-4" /> },
     ],
   },
   {
-    label: "",
-    expandable: false,
+    label: "Procurement",
+    expandable: true,
     items: [
-      { to: "/expenses", label: "Expenses", icon: <Receipt className="h-4 w-4" /> },
+      { to: "/purchase-orders", label: "Purchase Orders", icon: <Briefcase className="h-4 w-4" /> },
+    ],
+  },
+  {
+    label: "Accounting",
+    expandable: true,
+    items: [
+      { to: "/journal-entries", label: "Journal Entries", icon: <BookOpen className="h-4 w-4" /> },
+    ],
+  },
+  {
+    label: "HR & Payroll",
+    expandable: true,
+    items: [
+      { to: "/payroll", label: "Payroll & Employees", icon: <Users className="h-4 w-4" /> },
+    ],
+  },
+  {
+    label: "Projects",
+    expandable: true,
+    items: [
+      { to: "/projects", label: "Projects", icon: <Briefcase className="h-4 w-4" /> },
     ],
   },
   {

@@ -136,7 +136,7 @@ export function AppHeader() {
                       >
                         {item.label}
                         {showBadge && (
-                          <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center font-semibold">
+                          <span className="ml-2 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs font-semibold">
                             {creditsCount}
                           </span>
                         )}
@@ -237,9 +237,9 @@ export function AppHeader() {
                     >
                       {item.label}
                       {showBadge && (
-                        <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-destructive-foreground text-xs flex items-center justify-center font-semibold">
-                          {creditsCount}
-                        </span>
+                          <span className="ml-2 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-destructive text-destructive-foreground text-xs font-semibold">
+                            {creditsCount}
+                          </span>
                       )}
                     </Link>
                   );
