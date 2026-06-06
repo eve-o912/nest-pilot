@@ -47,13 +47,13 @@ export function TopBar({ title }: TopBarProps) {
         </button>
 
         {/* Reports Quick Link */}
-        <Link
-          to="/reports"
+        <a
+          href="/reports"
           className="inline-flex items-center gap-2 rounded-lg bg-[#EFF6FF] px-3 py-2 text-sm font-medium text-[#3B82F6] hover:bg-[#3B82F6]/10 transition-colors"
         >
           Reports
           <ChevronDown className="h-4 w-4" />
-        </Link>
+        </a>
 
         {/* Current User */}
         {session && (

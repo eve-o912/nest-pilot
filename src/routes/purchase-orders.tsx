@@ -4,7 +4,7 @@ import { Plus, Filter, MoreHorizontal, Trash2, Edit, Send, CheckCircle, X as XIc
 import { supabase } from "@/lib/supabase";
 import { formatKES } from "@/lib/store";
 
-export const Route = createFileRoute("/purchase-orders")({
+export const Route = createFileRoute("/purchase-orders" as any)({
   component: PurchaseOrders,
   head: () => ({
     meta: [
@@ -263,14 +263,14 @@ function PurchaseOrders() {
                   <td className="px-6 py-4 font-mono text-sm">{po.po_number}</td>
                   <td className="px-6 py-4">{po.supplier_name}</td>
                   <td className="px-6 py-4 text-muted-foreground">
-                    <Link to={`/purchase-orders/${po.id}`} className="text-blue-500 hover:underline">
+                    <a href={`/purchase-orders/${po.id}`} className="text-blue-500 hover:underline">
                       View items
-                    </Link>
+                    </a>
                   </td>
                   <td className="px-6 py-4 text-right font-mono">
-                    <Link to={`/purchase-orders/${po.id}`} className="text-blue-500 hover:underline">
+                    <a href={`/purchase-orders/${po.id}`} className="text-blue-500 hover:underline">
                       {formatKES(po.total_amount || 0)}
-                    </Link>
+                    </a>
                   </td>
                   <td className="px-6 py-4">
                     <select
