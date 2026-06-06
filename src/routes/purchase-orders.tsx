@@ -4,7 +4,7 @@ import { Plus, Filter, MoreHorizontal, Trash2, Edit, Send, CheckCircle, X as XIc
 import { supabase } from "@/lib/supabase";
 import { formatKES } from "@/lib/store";
 
-export const Route = createFileRoute("/purchase-orders" as any)({
+export const Route = createFileRoute("/purchase-orders")({
   component: PurchaseOrders,
   head: () => ({
     meta: [
