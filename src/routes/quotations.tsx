@@ -59,9 +59,14 @@ function Quotations() {
   });
 
   const convertToInvoice = async (quotation: any) => {
+    if (!confirm("Convert this quotation to an invoice?")) return;
+    
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        alert("User not authenticated");
+        return;
+      }
 
       // Generate invoice number
       const { data: lastInvoice } = await supabase
@@ -113,18 +118,23 @@ function Quotations() {
           unit_price: item.unit_price,
         }));
 
-        await supabase.from("invoice_items").insert(itemsToInsert);
+        const { error: itemsError } = await supabase.from("invoice_items").insert(itemsToInsert);
+        if (itemsError) throw itemsError;
       }
 
       // Update quotation status
-      await supabase
+      const { error: updateError } = await supabase
         .from("quotations")
         .update({ status: "converted" })
         .eq("id", quotation.id);
+      
+      if (updateError) throw updateError;
 
+      alert("Quotation converted to invoice successfully!");
       fetchQuotations();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error converting quotation to invoice:", error);
+      alert(error.message || "Failed to convert quotation to invoice");
     }
   };
 
@@ -291,6 +301,7 @@ function CreateQuotationForm({ onClose, onSuccess }: { onClose: () => void; onSu
   const [lineItems, setLineItems] = useState([{ description: "", quantity: 1, unitPrice: 0 }]);
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     fetchCustomers();
@@ -362,12 +373,23 @@ function CreateQuotationForm({ onClose, onSuccess }: { onClose: () => void; onSu
   };
 
   const handleSubmit = async () => {
-    if (!selectedCustomer || lineItems.length === 0) return;
+    if (!selectedCustomer) {
+      setError("Please select a customer");
+      return;
+    }
+    if (lineItems.length === 0 || lineItems.every(item => !item.description)) {
+      setError("Please add at least one line item with a description");
+      return;
+    }
     
     setLoading(true);
+    setError("");
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setError("User not authenticated");
+        return;
+      }
 
       const { data: quotation, error: quotationError } = await supabase
         .from("quotations")
@@ -405,8 +427,9 @@ function CreateQuotationForm({ onClose, onSuccess }: { onClose: () => void; onSu
 
       onSuccess();
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error creating quotation:", error);
+      setError(error.message || "Failed to create quotation");
     } finally {
       setLoading(false);
     }
@@ -589,10 +612,18 @@ function CreateQuotationForm({ onClose, onSuccess }: { onClose: () => void; onSu
             />
           </div>
 
+          {error && (
+            <div className="p-3 rounded-lg bg-[#FEE2E2] text-[#991B1B] text-sm">
+              {error}
+            </div>
+          )}
           {/* Actions */}
           <div className="flex gap-3 pt-4 border-t border-[#E2E8F0]">
             <button
-              onClick={onClose}
+              onClick={() => {
+                onClose();
+                setError("");
+              }}
               className="flex-1 rounded-lg border border-[#E2E8F0] px-4 py-2 text-sm font-medium text-foreground hover:bg-[#F8FAFC] transition-colors"
             >
               Cancel

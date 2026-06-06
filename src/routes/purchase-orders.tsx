@@ -27,6 +27,8 @@ function PurchaseOrders() {
   });
   const [items, setItems] = useState<any[]>([]);
   const [newItem, setNewItem] = useState({ description: "", quantity: 1, unit_price: 0 });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     fetchPos();
@@ -76,15 +78,27 @@ function PurchaseOrders() {
   };
 
   const handleSubmit = async () => {
-    if (!formData.supplier_name || items.length === 0) return;
+    if (!formData.supplier_name) {
+      setError("Supplier name is required");
+      return;
+    }
+    if (items.length === 0) {
+      setError("Please add at least one item");
+      return;
+    }
 
+    setLoading(true);
+    setError("");
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setError("User not authenticated");
+        return;
+      }
 
       if (editingPo) {
         // Update existing PO
-        await supabase
+        const { error: updateError } = await supabase
           .from("purchase_orders")
           .update({
             supplier_name: formData.supplier_name,
@@ -94,13 +108,26 @@ function PurchaseOrders() {
           })
           .eq("id", editingPo.id);
 
+        if (updateError) throw updateError;
+
         // Delete old items and insert new ones
-        await supabase.from("purchase_order_items").delete().eq("po_id", editingPo.id);
+        const { error: deleteError } = await supabase.from("purchase_order_items").delete().eq("po_id", editingPo.id);
+        if (deleteError) throw deleteError;
+
+        const itemsToInsert = items.map((item) => ({
+          po_id: editingPo.id,
+          description: item.description,
+          quantity: item.quantity,
+          unit_price: item.unit_price,
+        }));
+
+        const { error: itemsError } = await supabase.from("purchase_order_items").insert(itemsToInsert);
+        if (itemsError) throw itemsError;
       } else {
         // Create new PO
         const { data: poNumber } = await supabase.rpc("generate_po_number", { user_uuid: user.id });
 
-        const { data: newPo } = await supabase
+        const { data: newPo, error: insertError } = await supabase
           .from("purchase_orders")
           .insert({
             user_id: user.id,
@@ -113,6 +140,8 @@ function PurchaseOrders() {
           .select()
           .single();
 
+        if (insertError) throw insertError;
+
         if (newPo) {
           const itemsToInsert = items.map((item) => ({
             po_id: newPo.id,
@@ -121,37 +150,45 @@ function PurchaseOrders() {
             unit_price: item.unit_price,
           }));
 
-          await supabase.from("purchase_order_items").insert(itemsToInsert);
+          const { error: itemsError } = await supabase.from("purchase_order_items").insert(itemsToInsert);
+          if (itemsError) throw itemsError;
         }
       }
 
       setShowModal(false);
       fetchPos();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving PO:", error);
+      setError(error.message || "Failed to save purchase order");
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleChangeStatus = async (poId: string, newStatus: string) => {
     try {
-      await supabase
+      const { error } = await supabase
         .from("purchase_orders")
         .update({ status: newStatus, updated_at: new Date().toISOString() })
         .eq("id", poId);
 
+      if (error) throw error;
       fetchPos();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating PO status:", error);
+      alert(error.message || "Failed to update status");
     }
   };
 
   const handleDelete = async (poId: string) => {
     if (confirm("Delete this PO?")) {
       try {
-        await supabase.from("purchase_orders").delete().eq("id", poId);
+        const { error } = await supabase.from("purchase_orders").delete().eq("id", poId);
+        if (error) throw error;
         fetchPos();
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error deleting PO:", error);
+        alert(error.message || "Failed to delete purchase order");
       }
     }
   };
@@ -357,6 +394,11 @@ function PurchaseOrders() {
                 />
               </div>
 
+              {error && (
+                <div className="p-3 rounded-sm bg-red-500/10 text-red-600 text-sm">
+                  {error}
+                </div>
+              )}
               <div className="bg-secondary/30 p-3 rounded-sm">
                 <p className="text-sm text-muted-foreground">Total Amount</p>
                 <p className="text-2xl font-bold">{formatKES(getTotalAmount())}</p>
@@ -365,16 +407,20 @@ function PurchaseOrders() {
 
             <div className="mt-6 flex gap-2">
               <button
-                onClick={() => setShowModal(false)}
+                onClick={() => {
+                  setShowModal(false);
+                  setError("");
+                }}
                 className="flex-1 h-10 rounded-sm border border-border bg-background hover:bg-secondary text-sm font-medium"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
-                className="flex-1 h-10 rounded-sm bg-[#00AEEF] text-white text-sm font-semibold hover:opacity-90"
+                disabled={loading}
+                className="flex-1 h-10 rounded-sm bg-[#00AEEF] text-white text-sm font-semibold hover:opacity-90 disabled:opacity-50"
               >
-                {editingPo ? "Update" : "Create"} PO
+                {loading ? "Saving..." : (editingPo ? "Update" : "Create") + " PO"}
               </button>
             </div>
           </div>

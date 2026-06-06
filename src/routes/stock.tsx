@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
 import { Plus, AlertTriangle, X, Package, TrendingDown, DollarSign, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { ReceiptModal } from "@/components/ReceiptModal";
 
 interface Product {
   id: string;
@@ -52,6 +53,19 @@ function Stock() {
   const [sellQuantity, setSellQuantity] = useState("");
   const [sellPrice, setSellPrice] = useState("");
   const [sellError, setSellError] = useState("");
+  
+  // Receipt modal state
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [lastSaleData, setLastSaleData] = useState<{
+    customerName?: string;
+    customerPhone?: string;
+    items: Array<{ name: string; quantity: number; price: number }>;
+    totalAmount: number;
+    paymentMethod: "Cash" | "M-Pesa" | "Card" | "Bank";
+    mpesaReference?: string;
+    timestamp: Date;
+    businessName?: string;
+  } | null>(null);
 
   useEffect(() => {
     fetchProducts();
@@ -222,6 +236,18 @@ function Stock() {
         });
 
       if (insertError) throw insertError;
+
+      // Prepare receipt data
+      const receiptData = {
+        items: [{ name: selectedProduct.name, quantity: qty, price: price }],
+        totalAmount: qty * price,
+        paymentMethod: "Cash" as "Cash" | "M-Pesa" | "Card" | "Bank",
+        timestamp: new Date(),
+        businessName: "Business", // Will be fetched from settings in production
+      };
+
+      setLastSaleData(receiptData);
+      setShowReceiptModal(true);
 
       setSellQuantity("");
       setSellPrice("");
@@ -693,6 +719,18 @@ function Stock() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Receipt Modal */}
+      {lastSaleData && (
+        <ReceiptModal
+          isOpen={showReceiptModal}
+          onClose={() => {
+            setShowReceiptModal(false);
+            setLastSaleData(null);
+          }}
+          saleData={lastSaleData}
+        />
       )}
     </main>
   );

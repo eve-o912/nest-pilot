@@ -258,14 +258,22 @@ function AddExpenseForm({ onClose, onSuccess }: { onClose: () => void; onSuccess
   const [receiptUrl, setReceiptUrl] = useState("");
   const [status, setStatus] = useState<"pending" | "approved" | "rejected">("approved");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async () => {
-    if (!description || !amount) return;
+    if (!description || !amount) {
+      setError("Please fill in description and amount");
+      return;
+    }
     
     setLoading(true);
+    setError("");
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setError("User not authenticated");
+        return;
+      }
 
       const { error } = await supabase
         .from("expenses")
@@ -284,8 +292,9 @@ function AddExpenseForm({ onClose, onSuccess }: { onClose: () => void; onSuccess
 
       onSuccess();
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding expense:", error);
+      setError(error.message || "Failed to save expense");
     } finally {
       setLoading(false);
     }
@@ -385,6 +394,11 @@ function AddExpenseForm({ onClose, onSuccess }: { onClose: () => void; onSuccess
             </select>
           </div>
 
+          {error && (
+            <div className="p-3 rounded-lg bg-[#FEE2E2] text-[#991B1B] text-sm">
+              {error}
+            </div>
+          )}
           <div className="flex gap-3 pt-4">
             <button
               onClick={onClose}

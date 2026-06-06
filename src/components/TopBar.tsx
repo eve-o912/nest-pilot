@@ -1,4 +1,4 @@
-import { useLocation } from "@tanstack/react-router";
+import { useLocation, Link } from "@tanstack/react-router";
 import { Search, Bell, ChevronDown, User } from "lucide-react";
 import { useStore } from "@/lib/store";
 
@@ -47,22 +47,13 @@ export function TopBar({ title }: TopBarProps) {
         </button>
 
         {/* Reports Quick Link */}
-        <button className="inline-flex items-center gap-2 rounded-lg bg-[#EFF6FF] px-3 py-2 text-sm font-medium text-[#3B82F6] hover:bg-[#3B82F6]/10 transition-colors">
+        <Link
+          to="/reports"
+          className="inline-flex items-center gap-2 rounded-lg bg-[#EFF6FF] px-3 py-2 text-sm font-medium text-[#3B82F6] hover:bg-[#3B82F6]/10 transition-colors"
+        >
           Reports
           <ChevronDown className="h-4 w-4" />
-        </button>
-
-        {/* Team Avatars */}
-        <div className="flex -space-x-2">
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-secondary text-xs font-medium text-muted-foreground"
-            >
-              {String.fromCharCode(64 + i)}
-            </div>
-          ))}
-        </div>
+        </Link>
 
         {/* Current User */}
         {session && (

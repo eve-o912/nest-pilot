@@ -55,6 +55,8 @@ function Customers() {
   const [newCustomerNotes, setNewCustomerNotes] = useState("");
   const [phoneError, setPhoneError] = useState("");
   const [duplicateWarning, setDuplicateWarning] = useState("");
+  const [saveError, setSaveError] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     fetchCustomers();
@@ -177,7 +179,10 @@ function Customers() {
   };
 
   const handleAddCustomer = async () => {
-    if (!newBusinessName.trim()) return;
+    if (!newBusinessName.trim()) {
+      setSaveError("Business name is required");
+      return;
+    }
     
     const isValidPhone = validatePhone(newCustomerPhone);
     if (!isValidPhone) return;
@@ -185,9 +190,14 @@ function Customers() {
     const isDuplicate = await checkDuplicatePhone(newCustomerPhone);
     if (isDuplicate) return;
 
+    setIsSaving(true);
+    setSaveError("");
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        setSaveError("User not authenticated");
+        return;
+      }
 
       const { error } = await supabase
         .from("customers")
@@ -215,8 +225,11 @@ function Customers() {
       setDuplicateWarning("");
       setShowAddModal(false);
       fetchCustomers();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding customer:", error);
+      setSaveError(error.message || "Failed to save customer");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -493,6 +506,11 @@ function Customers() {
               </div>
             </div>
 
+            {saveError && (
+              <div className="p-3 rounded-lg bg-[#FEE2E2] text-[#991B1B] text-sm">
+                {saveError}
+              </div>
+            )}
             <div className="mt-6 flex gap-2">
               <button
                 onClick={() => {
@@ -506,6 +524,7 @@ function Customers() {
                   setNewCustomerNotes("");
                   setPhoneError("");
                   setDuplicateWarning("");
+                  setSaveError("");
                 }}
                 className="flex-1 rounded-lg border border-[#E2E8F0] bg-white px-4 py-2.5 text-sm font-medium hover:bg-[#F8FAFC] transition-colors"
               >
@@ -513,9 +532,10 @@ function Customers() {
               </button>
               <button
                 onClick={handleAddCustomer}
-                className="flex-1 rounded-lg bg-[#3B82F6] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#3B82F6]/90 transition-colors"
+                disabled={isSaving}
+                className="flex-1 rounded-lg bg-[#3B82F6] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#3B82F6]/90 transition-colors disabled:opacity-50"
               >
-                Save
+                {isSaving ? "Saving..." : "Save"}
               </button>
             </div>
           </div>
