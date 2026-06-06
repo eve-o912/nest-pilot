@@ -4,6 +4,8 @@ import { Plus, TrendingUp, TrendingDown, DollarSign, FileText, MoreHorizontal, C
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { supabase } from "@/lib/supabase";
 import { formatKES } from "@/lib/store";
+import { AIInsightCard } from "@/components/AIInsightCard";
+import { WeeklyReview } from "@/components/WeeklyReview";
 
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
@@ -152,6 +154,46 @@ function Dashboard() {
             color="#F59E0B"
           />
         </div>
+      </section>
+
+      {/* AI Insights Section */}
+      <section>
+        <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+          Manikka Insights
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <AIInsightCard
+            type="revenue"
+            title="Revenue Trend"
+            content="Revenue increased by 14% this week compared to last week."
+            trend="up"
+            trendValue="14%"
+          />
+          <AIInsightCard
+            type="profit"
+            title="Profit Margin"
+            content="Profit margin improved from 28% to 31% this month."
+            trend="up"
+            trendValue="3%"
+          />
+          <AIInsightCard
+            type="recommendation"
+            title="Top Category"
+            content="Your strongest category is beverages. Consider expanding inventory."
+          />
+          <AIInsightCard
+            type="risk"
+            title="Cash Flow Alert"
+            content="Cash flow decreased by 18% this week due to increased inventory purchases."
+            trend="down"
+            trendValue="18%"
+          />
+        </div>
+      </section>
+
+      {/* Weekly Business Review */}
+      <section>
+        <WeeklyReview />
       </section>
 
       {/* Revenue Trend Chart */}

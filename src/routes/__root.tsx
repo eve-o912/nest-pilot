@@ -12,8 +12,10 @@ import {
 import appCss from "../styles.css?url";
 import { Sidebar } from "@/components/Sidebar";
 import { TopBar } from "@/components/TopBar";
+import { ManikkaPanel } from "@/components/ManikkaPanel";
 import { useStore } from "@/lib/store";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { Sparkles } from "lucide-react";
 
 function NotFoundComponent() {
   return (
@@ -119,6 +121,7 @@ function RootComponent() {
   const navigate = useNavigate();
   const router = useRouter();
   const pathname = router.state.location.pathname;
+  const [showManikka, setShowManikka] = useState(false);
 
   const PUBLIC_ROUTES = ["/", "/login", "/signup", "/setup", "/reset-password"];
 
@@ -142,6 +145,19 @@ function RootComponent() {
             <main className="ml-[240px] mt-16 p-6 max-w-[1400px]">
               <Outlet />
             </main>
+            
+            {/* Floating AI Button */}
+            <button
+              onClick={() => setShowManikka(true)}
+              className="fixed bottom-6 right-6 z-40 flex items-center gap-2 px-4 py-3 rounded-full shadow-lg transition-all hover:scale-105"
+              style={{ backgroundColor: "#0B1F3A", color: "#F59E0B" }}
+            >
+              <Sparkles className="h-5 w-5" />
+              <span className="font-semibold text-sm">Ask Manikka</span>
+            </button>
+
+            {/* Manikka Panel */}
+            <ManikkaPanel isOpen={showManikka} onClose={() => setShowManikka(false)} />
           </>
         )}
       </div>
