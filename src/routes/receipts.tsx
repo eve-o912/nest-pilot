@@ -441,11 +441,11 @@ function Receipts() {
                     </td>
                     <td className="px-6 py-4 text-right font-mono">{formatKES(receipt.total_amount)}</td>
                     <td className="px-6 py-4">
-                      <span className="inline-flex items-center rounded-sm px-2 py-1 text-xs font-medium ${
+                      <span className={`inline-flex items-center rounded-sm px-2 py-1 text-xs font-medium ${
                         receipt.payment_method === "cash" ? "bg-green-500/10 text-green-600" :
                         receipt.payment_method === "mpesa" ? "bg-blue-500/10 text-blue-600" :
                         "bg-yellow-500/10 text-yellow-600"
-                      }">
+                      }`}>
                         {receipt.payment_method.toUpperCase()}
                       </span>
                     </td>
