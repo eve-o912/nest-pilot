@@ -27,7 +27,7 @@ function PurchaseOrders() {
   });
   const [items, setItems] = useState<any[]>([]);
   const [newItem, setNewItem] = useState({ description: "", quantity: 1, unit_price: 0 });
-  const [loading, setLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -87,7 +87,7 @@ function PurchaseOrders() {
       return;
     }
 
-    setLoading(true);
+    setIsSubmitting(true);
     setError("");
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -161,7 +161,7 @@ function PurchaseOrders() {
       console.error("Error saving PO:", error);
       setError(error.message || "Failed to save purchase order");
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -417,10 +417,10 @@ function PurchaseOrders() {
               </button>
               <button
                 onClick={handleSubmit}
-                disabled={loading}
+                disabled={isSubmitting}
                 className="flex-1 h-10 rounded-sm bg-[#00AEEF] text-white text-sm font-semibold hover:opacity-90 disabled:opacity-50"
               >
-                {loading ? "Saving..." : (editingPo ? "Update" : "Create") + " PO"}
+                {isSubmitting ? "Saving..." : (editingPo ? "Update" : "Create") + " PO"}
               </button>
             </div>
           </div>
