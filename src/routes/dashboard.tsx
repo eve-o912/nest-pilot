@@ -24,6 +24,7 @@ export const Route = createFileRoute("/dashboard")({
 
 function Dashboard() {
   const currentSegment = useStore((s) => s.currentSegment);
+  const session = useStore((s) => s.session);
   const [metrics, setMetrics] = useState({
     revenueToday: 0,
     cashThisMonth: 0,
@@ -41,15 +42,14 @@ function Dashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!session?.user) return;
 
       // Fetch today's revenue (income transactions from today)
       const today = new Date().toISOString().split('T')[0];
       const { data: todayIncome } = await supabase
         .from('transactions')
         .select('amount')
-        .eq('user_id', user.id)
+        .eq('user_id', session.user.id)
         .eq('type', 'income')
         .gte('created_at', today);
 
@@ -62,7 +62,7 @@ function Dashboard() {
       const { data: monthIncome } = await supabase
         .from('transactions')
         .select('amount')
-        .eq('user_id', user.id)
+        .eq('user_id', session.user.id)
         .eq('type', 'income')
         .gte('created_at', monthStart);
 
@@ -72,7 +72,7 @@ function Dashboard() {
       const { data: monthExpenses } = await supabase
         .from('transactions')
         .select('amount')
-        .eq('user_id', user.id)
+        .eq('user_id', session.user.id)
         .eq('type', 'expense')
         .gte('created_at', monthStart);
 
@@ -82,7 +82,7 @@ function Dashboard() {
       const { data: outstandingInvoices } = await supabase
         .from('invoices')
         .select('amount_due')
-        .eq('user_id', user.id)
+        .eq('user_id', session.user.id)
         .in('status', ['unpaid', 'partial', 'overdue']);
 
       const outstanding = outstandingInvoices?.reduce((sum, i) => sum + (i.amount_due || 0), 0) || 0;
@@ -97,7 +97,7 @@ function Dashboard() {
             contact_name
           )
         `)
-        .eq('user_id', user.id)
+        .eq('user_id', session.user.id)
         .order('created_at', { ascending: false })
         .limit(10);
 

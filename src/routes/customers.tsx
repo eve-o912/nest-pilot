@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import { Search, Plus, MessageCircle, X, Clock, DollarSign, MoreHorizontal, Phone, Mail, MapPin } from "lucide-react";
 import { supabase, type Transaction } from "@/lib/supabase";
 import { formatDistanceToNow } from "date-fns";
-import { formatKES } from "@/lib/store";
+import { formatKES, useStore } from "@/lib/store";
 
 interface Customer {
   id: string;
@@ -37,6 +37,7 @@ export const Route = createFileRoute("/customers")({
 });
 
 function Customers() {
+  const session = useStore((s) => s.session);
   const [searchQuery, setSearchQuery] = useState("");
   const [customers, setCustomers] = useState<CustomerWithStats[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,14 +66,13 @@ function Customers() {
   const fetchCustomers = async () => {
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!session?.user) return;
 
       // Fetch customers
       const { data: customersData, error: customersError } = await supabase
         .from("customers")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", session.user.id)
         .order("created_at", { ascending: false });
 
       if (customersError) throw customersError;
@@ -155,13 +155,12 @@ function Customers() {
 
   const checkDuplicatePhone = async (phone: string) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!session?.user) return;
 
       const { data } = await supabase
         .from("customers")
         .select("business_name")
-        .eq("user_id", user.id)
+        .eq("user_id", session.user.id)
         .eq("phone", phone)
         .single();
 
@@ -193,8 +192,7 @@ function Customers() {
     setIsSaving(true);
     setSaveError("");
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      if (!session?.user) {
         setSaveError("User not authenticated");
         return;
       }
@@ -202,7 +200,7 @@ function Customers() {
       const { error } = await supabase
         .from("customers")
         .insert({
-          user_id: user.id,
+          user_id: session.user.id,
           business_name: newBusinessName,
           contact_name: newContactName || null,
           phone: newCustomerPhone,

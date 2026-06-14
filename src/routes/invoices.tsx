@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
 import { Plus, Search, Filter, MoreHorizontal, Edit, Trash2, Send, FileText, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { formatKES } from "@/lib/store";
+import { formatKES, useStore } from "@/lib/store";
 
 export const Route = createFileRoute("/invoices")({
   component: Invoices,
@@ -15,6 +15,7 @@ export const Route = createFileRoute("/invoices")({
 });
 
 function Invoices() {
+  const session = useStore((s) => s.session);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -27,8 +28,7 @@ function Invoices() {
 
   const fetchInvoices = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!session?.user) return;
 
       const { data } = await supabase
         .from('invoices')
@@ -39,7 +39,7 @@ function Invoices() {
             contact_name
           )
         `)
-        .eq('user_id', user.id)
+        .eq('user_id', session.user.id)
         .order('created_at', { ascending: false });
 
       setInvoices(data || []);
@@ -213,6 +213,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 function CreateInvoiceForm({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+  const session = useStore((s) => s.session);
   const [customers, setCustomers] = useState<any[]>([]);
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [customerSearch, setCustomerSearch] = useState("");
@@ -233,13 +234,12 @@ function CreateInvoiceForm({ onClose, onSuccess }: { onClose: () => void; onSucc
 
   const fetchCustomers = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!session?.user) return;
 
       const { data } = await supabase
         .from("customers")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", session.user.id)
         .order("business_name", { ascending: true });
 
       setCustomers(data || []);
@@ -250,13 +250,12 @@ function CreateInvoiceForm({ onClose, onSuccess }: { onClose: () => void; onSucc
 
   const generateInvoiceNumber = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!session?.user) return;
 
       const { data } = await supabase
         .from("invoices")
         .select("invoice_number")
-        .eq("user_id", user.id)
+        .eq("user_id", session.user.id)
         .order("invoice_number", { ascending: false })
         .limit(1);
 
@@ -308,8 +307,7 @@ function CreateInvoiceForm({ onClose, onSuccess }: { onClose: () => void; onSucc
     setLoading(true);
     setError("");
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      if (!session?.user) {
         setError("User not authenticated");
         return;
       }
@@ -317,7 +315,7 @@ function CreateInvoiceForm({ onClose, onSuccess }: { onClose: () => void; onSucc
       const { data: invoice, error: invoiceError } = await supabase
         .from("invoices")
         .insert({
-          user_id: user.id,
+          user_id: session.user.id,
           customer_id: selectedCustomer.id,
           invoice_number: invoiceNumber,
           issue_date: issueDate,

@@ -32,7 +32,7 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
         const phone = isEmail ? '' : identifier;
         const result = actions.signup(email, phone, password);
         if (result.success) {
-          navigate({ to: "/setup" });
+          navigate({ to: "/select-segment" });
         }
       } else {
         if (!identifier || !password) {

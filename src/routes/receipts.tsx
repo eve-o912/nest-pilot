@@ -32,6 +32,7 @@ interface Customer {
 
 function Receipts() {
   const business = useStore((s) => s.business);
+  const session = useStore((s) => s.session);
   const [receipts, setReceipts] = useState<Receipt[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,8 +64,7 @@ function Receipts() {
   const fetchReceipts = async () => {
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!session?.user) return;
 
       const { data, error } = await supabase
         .from("receipts")
@@ -83,13 +83,12 @@ function Receipts() {
 
   const fetchCustomers = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!session?.user) return;
 
       const { data, error } = await supabase
         .from("customers")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", session.user.id)
         .order("business_name");
 
       if (error) throw error;
@@ -158,8 +157,7 @@ function Receipts() {
     setIsSubmitting(true);
     setError("");
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!session?.user) return;
 
       // Generate receipt number
       const { data: receiptNumber } = await supabase.rpc("generate_receipt_number", { 

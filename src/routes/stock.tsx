@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useMemo } from "react";
 import { Plus, AlertTriangle, X, Package, TrendingDown, DollarSign, AlertCircle } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { useStore } from "@/lib/store";
 import { ReceiptModal } from "@/components/ReceiptModal";
 
 interface Product {
@@ -29,6 +30,7 @@ export const Route = createFileRoute("/stock")({
 });
 
 function Stock() {
+  const session = useStore((s) => s.session);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
@@ -74,13 +76,12 @@ function Stock() {
   const fetchProducts = async () => {
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!session?.user) return;
 
       const { data, error } = await supabase
         .from("products")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", session.user.id)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -124,13 +125,12 @@ function Stock() {
     if (!newProductName.trim() || !newBuyingPrice || !newSellingPrice || !newOpeningStock) return;
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!session?.user) return;
 
       const { error } = await supabase
         .from("products")
         .insert({
-          user_id: user.id,
+          user_id: session.user.id,
           name: newProductName,
           unit: newUnit,
           buying_price: parseFloat(newBuyingPrice),
@@ -158,8 +158,7 @@ function Stock() {
     if (!selectedProduct || !restockQuantity || !restockCost) return;
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!session?.user) return;
 
       const qty = parseInt(restockQuantity);
       const cost = parseFloat(restockCost);
@@ -176,7 +175,7 @@ function Stock() {
       const { error: insertError } = await supabase
         .from("transactions")
         .insert({
-          user_id: user.id,
+          user_id: session.user.id,
           type: "expense",
           amount: qty * cost,
           tag: "#restock",
@@ -209,8 +208,7 @@ function Stock() {
     }
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!session?.user) return;
 
       const price = parseFloat(sellPrice);
 

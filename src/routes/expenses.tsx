@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { Plus, Search, Filter, MoreHorizontal, PieChart, X } from "lucide-react";
 import { PieChart as RechartsPieChart, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 import { supabase } from "@/lib/supabase";
-import { formatKES } from "@/lib/store";
+import { formatKES, useStore } from "@/lib/store";
 
 const EXPENSE_CATEGORIES = [
   "Rent", "Salaries", "Transport", "Utilities", "Marketing", "Inventory", "Other"
@@ -22,6 +22,7 @@ export const Route = createFileRoute("/expenses")({
 });
 
 function Expenses() {
+  const session = useStore((s) => s.session);
   const [expenses, setExpenses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -35,13 +36,12 @@ function Expenses() {
 
   const fetchExpenses = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!session?.user) return;
 
       const { data } = await supabase
         .from('expenses')
         .select('*')
-        .eq('user_id', user.id)
+        .eq('user_id', session.user.id)
         .order('date', { ascending: false });
 
       setExpenses(data || []);
@@ -269,8 +269,7 @@ function AddExpenseForm({ onClose, onSuccess }: { onClose: () => void; onSuccess
     setLoading(true);
     setError("");
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
+      if (!session?.user) {
         setError("User not authenticated");
         return;
       }
@@ -278,7 +277,7 @@ function AddExpenseForm({ onClose, onSuccess }: { onClose: () => void; onSuccess
       const { error } = await supabase
         .from("expenses")
         .insert({
-          user_id: user.id,
+          user_id: session.user.id,
           category,
           description,
           amount: parseFloat(amount),

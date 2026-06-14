@@ -1,17 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { Check, ChevronRight } from "lucide-react";
-import { actions, useStore, type Business } from "@/lib/store";
+import { actions, useStore, type Business, type UserSegment } from "@/lib/store";
 
 const BUSINESS_TYPES = ["Retail", "Wholesale", "Services", "Food", "Salon", "Transport"];
 const PAYMENT_METHODS = ["M-Pesa Till", "M-Pesa Paybill", "Cash"];
 
-type SectionKey = "identity" | "payment" | "receipt";
+type SectionKey = "identity" | "payment" | "receipt" | "segment";
 
 const SECTIONS: { key: SectionKey; label: string; description: string }[] = [
   { key: "identity", label: "Business Identity", description: "Name, type, and location." },
   { key: "payment", label: "Payment Details", description: "How you collect payments." },
   { key: "receipt", label: "Receipt Branding", description: "Support contact and footer message." },
+  { key: "segment", label: "Your Nest Mode", description: "Switch between business types." },
 ];
 
 export const Route = createFileRoute("/settings")({
@@ -26,6 +27,7 @@ export const Route = createFileRoute("/settings")({
 
 function SettingsPage() {
   const business = useStore((s) => s.business);
+  const currentSegment = useStore((s) => s.currentSegment);
   const [active, setActive] = useState<SectionKey>("identity");
 
   return (
@@ -63,6 +65,7 @@ function SettingsPage() {
           {active === "identity" && <IdentityForm business={business} />}
           {active === "payment" && <PaymentForm business={business} />}
           {active === "receipt" && <ReceiptForm business={business} />}
+          {active === "segment" && <SegmentForm currentSegment={currentSegment} />}
         </section>
       </div>
     </main>
@@ -176,6 +179,54 @@ function ReceiptForm({ business }: { business: Business }) {
         </pre>
       </div>
     </FormShell>
+  );
+}
+
+function SegmentForm({ currentSegment }: { currentSegment: UserSegment }) {
+  const SEGMENTS: { id: UserSegment; label: string; description: string; icon: string }[] = [
+    { id: "informal_business", label: "Informal Business", description: "Daily income & expenses", icon: "🏪" },
+    { id: "startup_founder", label: "Startup", description: "Runway, burn, MRR", icon: "🚀" },
+    { id: "individual_gig", label: "Gig / Individual", description: "Income streams & credit", icon: "⚡" },
+    { id: "sme_owner", label: "Growing SME", description: "Multi-branch, staff, POS", icon: "🏢" },
+  ];
+
+  const SEGMENT_COLORS: Record<UserSegment, string> = {
+    informal_business: "bg-blue-500",
+    startup_founder: "bg-purple-500",
+    individual_gig: "bg-green-500",
+    sme_owner: "bg-orange-500",
+  };
+
+  return (
+    <div>
+      <div className="mb-6 border-b border-border pb-4">
+        <h2 className="text-lg font-semibold tracking-tight">Your Nest Mode</h2>
+        <p className="text-sm text-muted-foreground">Switch between business types to customize your dashboard.</p>
+      </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        {SEGMENTS.map((segment) => (
+          <button
+            key={segment.id}
+            onClick={() => actions.setSegment(segment.id)}
+            className={`p-4 border-2 rounded-sm text-left transition-all ${
+              currentSegment === segment.id
+                ? "border-sky-500 bg-sky-50 dark:bg-sky-950/20"
+                : "border-border bg-card hover:border-sky-300"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <span className={`inline-flex items-center justify-center w-10 h-10 rounded-full text-white ${SEGMENT_COLORS[segment.id]}`}>
+                {segment.icon}
+              </span>
+              <div>
+                <p className="font-medium text-foreground">{segment.label}</p>
+                <p className="text-xs text-muted-foreground">{segment.description}</p>
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 

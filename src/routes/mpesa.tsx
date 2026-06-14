@@ -3,6 +3,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { Plus, Check, AlertTriangle, X, DollarSign, Clock, Bell } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { format, formatDistanceToNow } from "date-fns";
+import { useStore } from "@/lib/store";
 
 interface MpesaTransaction {
   id: string;
@@ -43,6 +44,7 @@ export const Route = createFileRoute("/mpesa")({
 });
 
 function Mpesa() {
+  const session = useStore((s) => s.session);
   const [transactions, setTransactions] = useState<MpesaTransaction[]>([]);
   const [loading, setLoading] = useState(true);
   const [showMatchModal, setShowMatchModal] = useState(false);
@@ -63,13 +65,12 @@ function Mpesa() {
   const fetchTransactions = async () => {
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!session?.user) return;
 
       const { data, error } = await supabase
         .from("mpesa_transactions")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", session.user.id)
         .order("transaction_time", { ascending: false });
 
       if (error) throw error;
@@ -176,8 +177,7 @@ function Mpesa() {
     setShowMatchModal(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!session?.user) return;
 
       const tenMinutesAgo = new Date(new Date(tx.transaction_time).getTime() - 10 * 60 * 1000).toISOString();
       const tenMinutesLater = new Date(new Date(tx.transaction_time).getTime() + 10 * 60 * 1000).toISOString();
@@ -186,7 +186,7 @@ function Mpesa() {
       const { data } = await supabase
         .from("transactions")
         .select("*")
-        .eq("user_id", user.id)
+        .eq("user_id", session.user.id)
         .eq("type", "income")
         .gte("amount", amount - 1)
         .lte("amount", amount + 1)
@@ -225,8 +225,7 @@ function Mpesa() {
 
   const handleCreateTransaction = async (tx: MpesaTransaction) => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!session?.user) return;
 
       const name = [tx.first_name, tx.middle_name, tx.last_name].filter(Boolean).join(" ");
       const description = `${name} - ${tx.bill_ref_number || "M-Pesa"}`;
@@ -234,7 +233,7 @@ function Mpesa() {
       const { data: newTx, error } = await supabase
         .from("transactions")
         .insert({
-          user_id: user.id,
+          user_id: session.user.id,
           type: "income",
           amount: Number(tx.amount),
           tag: "#mpesa",
@@ -258,14 +257,13 @@ function Mpesa() {
 
   const handleSandboxTest = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!session?.user) return;
 
       // Get user's shortcode from mpesa_settings
       const { data: settings } = await supabase
         .from("mpesa_settings")
         .select("shortcode")
-        .eq("user_id", user.id)
+        .eq("user_id", session.user.id)
         .single();
 
       if (!settings?.shortcode) {
