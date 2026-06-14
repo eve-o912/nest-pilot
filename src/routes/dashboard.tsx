@@ -3,9 +3,14 @@ import { useState, useEffect } from "react";
 import { Plus, TrendingUp, TrendingDown, DollarSign, FileText, MoreHorizontal, ChevronDown } from "lucide-react";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { supabase } from "@/lib/supabase";
-import { formatKES } from "@/lib/store";
+import { formatKES, useStore } from "@/lib/store";
 import { AIInsightCard } from "@/components/AIInsightCard";
 import { WeeklyReview } from "@/components/WeeklyReview";
+import { SegmentModeSwitch } from "@/components/SegmentModeSwitch";
+import { StartupDashboard } from "@/components/StartupDashboard";
+import { InformalBusinessDashboard } from "@/components/InformalBusinessDashboard";
+import { GigWorkerDashboard } from "@/components/GigWorkerDashboard";
+import { SMEDashboard } from "@/components/SMEDashboard";
 
 export const Route = createFileRoute("/dashboard")({
   component: Dashboard,
@@ -18,6 +23,7 @@ export const Route = createFileRoute("/dashboard")({
 });
 
 function Dashboard() {
+  const currentSegment = useStore((s) => s.currentSegment);
   const [metrics, setMetrics] = useState({
     revenueToday: 0,
     cashThisMonth: 0,
@@ -120,263 +126,280 @@ function Dashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Hero Metrics Section */}
-      <section>
-        <h2 className="text-lg font-semibold text-foreground mb-4">Hero metrics</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Small Metric Cards */}
-          <MetricCard
-            title="Revenue"
-            value={metrics.revenueToday}
-            subtitle="Cash Today"
-            trendData={revenueData.slice(-7)}
-            color="#3B82F6"
-          />
-          <MetricCard
-            title="Cash This Month"
-            value={metrics.cashThisMonth}
-            subtitle="Cash This Month"
-            trendData={revenueData.slice(-30)}
-            color="#3B82F6"
-          />
-          <MetricCard
-            title="Expenses"
-            value={metrics.expensesThisMonth}
-            subtitle="This Month"
-            trendData={revenueData.slice(-30).map(d => ({ ...d, revenue: d.expenses }))}
-            color="#EF4444"
-          />
-          <MetricCard
-            title="Outstanding"
-            value={metrics.outstanding}
-            subtitle="Unpaid Invoices"
-            trendData={revenueData.slice(-30)}
-            color="#F59E0B"
-          />
-        </div>
-      </section>
+      {/* Segment Mode Switch */}
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
+        <SegmentModeSwitch />
+      </div>
 
-      {/* AI Insights Section */}
-      <section>
-        <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
-          Manikka Insights
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <AIInsightCard
-            type="revenue"
-            title="Revenue Trend"
-            content="Revenue increased by 14% this week compared to last week."
-            trend="up"
-            trendValue="14%"
-          />
-          <AIInsightCard
-            type="profit"
-            title="Profit Margin"
-            content="Profit margin improved from 28% to 31% this month."
-            trend="up"
-            trendValue="3%"
-          />
-          <AIInsightCard
-            type="recommendation"
-            title="Top Category"
-            content="Your strongest category is beverages. Consider expanding inventory."
-          />
-          <AIInsightCard
-            type="risk"
-            title="Cash Flow Alert"
-            content="Cash flow decreased by 18% this week due to increased inventory purchases."
-            trend="down"
-            trendValue="18%"
-          />
-        </div>
-      </section>
+      {/* Segment-Specific Dashboard */}
+      {currentSegment === "startup_founder" && <StartupDashboard />}
+      {currentSegment === "informal_business" && <InformalBusinessDashboard />}
+      {currentSegment === "individual_gig" && <GigWorkerDashboard />}
+      {currentSegment === "sme_owner" && <SMEDashboard />}
 
-      {/* Weekly Business Review */}
-      <section>
-        <WeeklyReview />
-      </section>
-
-      {/* Revenue Trend Chart */}
-      <section className="bg-white rounded-xl border border-[#E2E8F0] p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h3 className="text-lg font-semibold text-foreground">Revenue Trend</h3>
-            <p className="text-sm text-muted-foreground">KES {formatKES(metrics.cashThisMonth)} • February 2026</p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setSelectedRange('month')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg ${selectedRange === 'month' ? 'bg-[#EFF6FF] text-[#3B82F6]' : 'text-muted-foreground hover:bg-secondary/50'}`}>
-              This Month
-            </button>
-            <button
-              onClick={() => setSelectedRange('3months')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg ${selectedRange === '3months' ? 'bg-[#EFF6FF] text-[#3B82F6]' : 'text-muted-foreground hover:bg-secondary/50'}`}>
-              Last 3 Months
-            </button>
-            <button
-              onClick={() => setSelectedRange('year')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg ${selectedRange === 'year' ? 'bg-[#EFF6FF] text-[#3B82F6]' : 'text-muted-foreground hover:bg-secondary/50'}`}>
-              This Year
-            </button>
-          </div>
-        </div>
-        <div className="h-[300px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={revenueData}>
-              <defs>
-                <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.1}/>
-                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
-                </linearGradient>
-                <linearGradient id="colorExpenses" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#EF4444" stopOpacity={0.1}/>
-                  <stop offset="95%" stopColor="#EF4444" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-              <XAxis 
-                dataKey="date" 
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: '#94A3B8', fontSize: 12 }}
+      {/* Legacy Dashboard (shown when no specific segment dashboard is available) */}
+      {currentSegment === "informal_business" && (
+        <>
+          {/* Hero Metrics Section */}
+          <section>
+            <h2 className="text-lg font-semibold text-foreground mb-4">Hero metrics</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Small Metric Cards */}
+              <MetricCard
+                title="Revenue"
+                value={metrics.revenueToday}
+                subtitle="Cash Today"
+                trendData={revenueData.slice(-7)}
+                color="#3B82F6"
               />
-              <YAxis 
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: '#94A3B8', fontSize: 12 }}
-                tickFormatter={(value) => `KES ${(value / 1000).toFixed(0)}k`}
+              <MetricCard
+                title="Cash This Month"
+                value={metrics.cashThisMonth}
+                subtitle="Cash This Month"
+                trendData={revenueData.slice(-30)}
+                color="#3B82F6"
               />
-              <Tooltip 
-                contentStyle={{ 
-                  backgroundColor: '#FFFFFF', 
-                  border: '1px solid #E2E8F0',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
-                }}
+              <MetricCard
+                title="Expenses"
+                value={metrics.expensesThisMonth}
+                subtitle="This Month"
+                trendData={revenueData.slice(-30).map(d => ({ ...d, revenue: d.expenses }))}
+                color="#EF4444"
               />
-              <Area 
-                type="monotone" 
-                dataKey="revenue" 
-                stroke="#3B82F6" 
-                strokeWidth={2}
-                fillOpacity={1} 
-                fill="url(#colorRevenue)" 
+              <MetricCard
+                title="Outstanding"
+                value={metrics.outstanding}
+                subtitle="Unpaid Invoices"
+                trendData={revenueData.slice(-30)}
+                color="#F59E0B"
               />
-              <Area 
-                type="monotone" 
-                dataKey="expenses" 
-                stroke="#EF4444" 
-                strokeWidth={2}
-                fillOpacity={1} 
-                fill="url(#colorExpenses)" 
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
-
-      {/* Recent Invoices Table */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-foreground">Recent Invoices</h2>
-          <div className="flex items-center gap-3">
-            <Link
-              to="/invoices"
-              className="px-3 py-1.5 text-sm font-medium rounded-lg text-muted-foreground hover:bg-secondary/50"
-            >
-              All Invoices
-            </Link>
-            <Link
-              to="/invoices?filter=outstanding"
-              className="px-3 py-1.5 text-sm font-medium rounded-lg text-muted-foreground hover:bg-secondary/50"
-            >
-              Outstanding Invoices
-            </Link>
-            <Link
-              to="/invoices"
-              className="inline-flex items-center gap-2 rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3B82F6]/90 transition-colors"
-            >
-              <Plus className="h-4 w-4" />
-              New
-              <ChevronDown className="h-4 w-4" />
-            </Link>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
-          {loading ? (
-            <div className="p-8 text-center text-muted-foreground">Loading...</div>
-          ) : invoices.length === 0 ? (
-            <div className="p-8 text-center">
-              <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground mb-4">No invoices yet</p>
-              <Link
-                to="/invoices"
-                className="inline-flex items-center gap-2 rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3B82F6]/90 transition-colors"
-              >
-                <Plus className="h-4 w-4" />
-                Create your first invoice
-              </Link>
             </div>
-          ) : (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-[#E2E8F0] text-left text-xs uppercase tracking-wider text-muted-foreground">
-                  <th className="px-6 py-3 font-medium">Customer</th>
-                  <th className="px-6 py-3 font-medium">Invoice #</th>
-                  <th className="px-6 py-3 font-medium">Status</th>
-                  <th className="px-6 py-3 font-medium text-right">Amount</th>
-                  <th className="px-6 py-3 font-medium">Due Date</th>
-                  <th className="px-6 py-3 font-medium">Assigned</th>
-                  <th className="px-6 py-3 font-medium text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoices.map((invoice) => (
-                  <tr key={invoice.id} className="border-b border-[#E2E8F0] hover:bg-[#F8FAFC] transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EFF6FF] text-[#3B82F6] text-sm font-medium">
-                          {(invoice.customers?.business_name || 'C').charAt(0)}
-                        </div>
-                        <div>
-                          <p className="font-medium text-foreground">{invoice.customers?.business_name || 'Unknown'}</p>
-                          <p className="text-xs text-muted-foreground">{invoice.customers?.contact_name || ''}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm font-mono text-muted-foreground">{invoice.invoice_number}</td>
-                    <td className="px-6 py-4">
-                      <StatusBadge status={invoice.status} />
-                    </td>
-                    <td className="px-6 py-4 text-right font-mono text-sm font-medium text-foreground">
-                      {formatKES(invoice.total_amount)}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-muted-foreground">
-                      {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString('en-KE', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-xs font-medium text-muted-foreground">
-                        U
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <Link
-                        to={`/invoices/${invoice.id}`}
-                        className="text-muted-foreground hover:text-foreground transition-colors"
-                        aria-label={`Open invoice ${invoice.invoice_number}`}
-                      >
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </section>
+          </section>
+
+          {/* AI Insights Section */}
+          <section>
+            <h2 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+              Manikka Insights
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <AIInsightCard
+                type="revenue"
+                title="Revenue Trend"
+                content="Revenue increased by 14% this week compared to last week."
+                trend="up"
+                trendValue="14%"
+              />
+              <AIInsightCard
+                type="profit"
+                title="Profit Margin"
+                content="Profit margin improved from 28% to 31% this month."
+                trend="up"
+                trendValue="3%"
+              />
+              <AIInsightCard
+                type="recommendation"
+                title="Top Category"
+                content="Your strongest category is beverages. Consider expanding inventory."
+              />
+              <AIInsightCard
+                type="risk"
+                title="Cash Flow Alert"
+                content="Cash flow decreased by 18% this week due to increased inventory purchases."
+                trend="down"
+                trendValue="18%"
+              />
+            </div>
+          </section>
+
+          {/* Weekly Business Review */}
+          <section>
+            <WeeklyReview />
+          </section>
+
+          {/* Revenue Trend Chart */}
+          <section className="bg-white rounded-xl border border-[#E2E8F0] p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-semibold text-foreground">Revenue Trend</h3>
+                <p className="text-sm text-muted-foreground">KES {formatKES(metrics.cashThisMonth)} • February 2026</p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setSelectedRange('month')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg ${selectedRange === 'month' ? 'bg-[#EFF6FF] text-[#3B82F6]' : 'text-muted-foreground hover:bg-secondary/50'}`}>
+                  This Month
+                </button>
+                <button
+                  onClick={() => setSelectedRange('3months')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg ${selectedRange === '3months' ? 'bg-[#EFF6FF] text-[#3B82F6]' : 'text-muted-foreground hover:bg-secondary/50'}`}>
+                  Last 3 Months
+                </button>
+                <button
+                  onClick={() => setSelectedRange('year')}
+                  className={`px-3 py-1.5 text-sm font-medium rounded-lg ${selectedRange === 'year' ? 'bg-[#EFF6FF] text-[#3B82F6]' : 'text-muted-foreground hover:bg-secondary/50'}`}>
+                  This Year
+                </button>
+              </div>
+            </div>
+            <div className="h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={revenueData}>
+                  <defs>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.1}/>
+                      <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorExpenses" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#EF4444" stopOpacity={0.1}/>
+                      <stop offset="95%" stopColor="#EF4444" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                  <XAxis 
+                    dataKey="date" 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#94A3B8', fontSize: 12 }}
+                  />
+                  <YAxis 
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#94A3B8', fontSize: 12 }}
+                    tickFormatter={(value) => `KES ${(value / 1000).toFixed(0)}k`}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: '#FFFFFF', 
+                      border: '1px solid #E2E8F0',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+                    }}
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="revenue" 
+                    stroke="#3B82F6" 
+                    strokeWidth={2}
+                    fillOpacity={1} 
+                    fill="url(#colorRevenue)" 
+                  />
+                  <Area 
+                    type="monotone" 
+                    dataKey="expenses" 
+                    stroke="#EF4444" 
+                    strokeWidth={2}
+                    fillOpacity={1} 
+                    fill="url(#colorExpenses)" 
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </section>
+
+          {/* Recent Invoices Table */}
+          <section>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-foreground">Recent Invoices</h2>
+              <div className="flex items-center gap-3">
+                <Link
+                  to="/invoices"
+                  className="px-3 py-1.5 text-sm font-medium rounded-lg text-muted-foreground hover:bg-secondary/50"
+                >
+                  All Invoices
+                </Link>
+                <Link
+                  to="/invoices?filter=outstanding"
+                  className="px-3 py-1.5 text-sm font-medium rounded-lg text-muted-foreground hover:bg-secondary/50"
+                >
+                  Outstanding Invoices
+                </Link>
+                <Link
+                  to="/invoices"
+                  className="inline-flex items-center gap-2 rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3B82F6]/90 transition-colors"
+                >
+                  <Plus className="h-4 w-4" />
+                  New
+                  <ChevronDown className="h-4 w-4" />
+                </Link>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl border border-[#E2E8F0] shadow-sm overflow-hidden">
+              {loading ? (
+                <div className="p-8 text-center text-muted-foreground">Loading...</div>
+              ) : invoices.length === 0 ? (
+                <div className="p-8 text-center">
+                  <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <p className="text-muted-foreground mb-4">No invoices yet</p>
+                  <Link
+                    to="/invoices"
+                    className="inline-flex items-center gap-2 rounded-lg bg-[#3B82F6] px-4 py-2 text-sm font-semibold text-white hover:bg-[#3B82F6]/90 transition-colors"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Create your first invoice
+                  </Link>
+                </div>
+              ) : (
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-[#E2E8F0] text-left text-xs uppercase tracking-wider text-muted-foreground">
+                      <th className="px-6 py-3 font-medium">Customer</th>
+                      <th className="px-6 py-3 font-medium">Invoice #</th>
+                      <th className="px-6 py-3 font-medium">Status</th>
+                      <th className="px-6 py-3 font-medium text-right">Amount</th>
+                      <th className="px-6 py-3 font-medium">Due Date</th>
+                      <th className="px-6 py-3 font-medium">Assigned</th>
+                      <th className="px-6 py-3 font-medium text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invoices.map((invoice) => (
+                      <tr key={invoice.id} className="border-b border-[#E2E8F0] hover:bg-[#F8FAFC] transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#EFF6FF] text-[#3B82F6] text-sm font-medium">
+                              {(invoice.customers?.business_name || 'C').charAt(0)}
+                            </div>
+                            <div>
+                              <p className="font-medium text-foreground">{invoice.customers?.business_name || 'Unknown'}</p>
+                              <p className="text-xs text-muted-foreground">{invoice.customers?.contact_name || ''}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm font-mono text-muted-foreground">{invoice.invoice_number}</td>
+                        <td className="px-6 py-4">
+                          <StatusBadge status={invoice.status} />
+                        </td>
+                        <td className="px-6 py-4 text-right font-mono text-sm font-medium text-foreground">
+                          {formatKES(invoice.total_amount)}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-muted-foreground">
+                          {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString('en-KE', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-xs font-medium text-muted-foreground">
+                            U
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-right">
+                          <Link
+                            to={`/invoices/${invoice.id}`}
+                            className="text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label={`Open invoice ${invoice.invoice_number}`}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Link>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          </section>
+        </>
+      )}
     </div>
   );
 }

@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, type FormEvent } from "react";
 import { ArrowRight } from "lucide-react";
-import { actions } from "@/lib/store";
+import { actions, type UserSegment } from "@/lib/store";
+import { SegmentSelection } from "@/components/SegmentSelection";
 
 const BUSINESS_TYPES = ["Retail", "Wholesale", "Services", "Food", "Salon", "Transport"];
 const PAYMENT_METHODS = ["M-Pesa Till", "M-Pesa Paybill", "Cash"];
@@ -19,35 +20,42 @@ export const Route = createFileRoute("/setup")({
 function Setup() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const [selectedSegment, setSelectedSegment] = useState<UserSegment | null>(null);
 
-  // Step 1
+  // Step 2 (was step 1)
   const [name, setName] = useState("");
   const [type, setType] = useState<string | null>(null);
   const [city, setCity] = useState("");
 
-  // Step 2
+  // Step 3 (was step 2)
   const [method, setMethod] = useState<string | null>(null);
   const [tillNumber, setTillNumber] = useState("");
 
-  // Step 3
+  // Step 4 (was step 3)
   const [supportPhone, setSupportPhone] = useState("");
   const [tagline, setTagline] = useState("");
 
-  const step1Ready = name.trim() && type && city.trim();
+  const step2Ready = name.trim() && type && city.trim();
 
-  const goNext = () => setStep((s) => Math.min(s + 1, 3));
+  const goNext = () => setStep((s) => Math.min(s + 1, 4));
   const finish = () => {
     actions.updateBusiness({ supportPhone, tagline });
     navigate({ to: "/dashboard" });
   };
 
+  const handleSegmentSelect = (segment: UserSegment) => {
+    setSelectedSegment(segment);
+    actions.setSegment(segment);
+    goNext();
+  };
+
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
-    if (step === 1) {
-      if (!step1Ready) return;
+    if (step === 2) {
+      if (!step2Ready) return;
       actions.updateBusiness({ name: name.trim(), type: type ?? undefined, city: city.trim() });
       goNext();
-    } else if (step === 2) {
+    } else if (step === 3) {
       actions.updateBusiness({ paymentMethod: method ?? undefined, till: tillNumber });
       goNext();
     } else {
@@ -56,9 +64,10 @@ function Setup() {
   };
 
   const titles: Record<number, { title: string; subtitle?: string }> = {
-    1: { title: "Your Business" },
-    2: { title: "How do you get paid?", subtitle: "We'll add these details to your digital receipts." },
-    3: { title: "Customize your receipts", subtitle: "Add a personal touch for your customers." },
+    1: { title: "Choose your experience", subtitle: "Select the option that best describes you." },
+    2: { title: "Your Business" },
+    3: { title: "How do you get paid?", subtitle: "We'll add these details to your digital receipts." },
+    4: { title: "Customize your receipts", subtitle: "Add a personal touch for your customers." },
   };
 
   return (
@@ -76,10 +85,10 @@ function Setup() {
         <div className="w-full max-w-2xl border border-border bg-card p-8 md:p-10">
           <div className="mb-1 flex items-center justify-between">
             <div className="text-xs font-semibold uppercase tracking-wider text-sky">
-              Step {step} of 3
+              Step {step} of 4
             </div>
             <div className="flex gap-1">
-              {[1, 2, 3].map((i) => (
+              {[1, 2, 3, 4].map((i) => (
                 <span
                   key={i}
                   className="h-1 w-8"
@@ -95,6 +104,10 @@ function Setup() {
 
           <form onSubmit={onSubmit} className="mt-8 space-y-7">
             {step === 1 && (
+              <SegmentSelection onComplete={() => goNext()} />
+            )}
+
+            {step === 2 && (
               <>
                 <Field label="Business Name">
                   <input
@@ -132,7 +145,7 @@ function Setup() {
               </>
             )}
 
-            {step === 2 && (
+            {step === 3 && (
               <>
                 <Field label="Primary Method">
                   <div className="flex flex-wrap gap-2">
@@ -161,7 +174,7 @@ function Setup() {
               </>
             )}
 
-            {step === 3 && (
+            {step === 4 && (
               <>
                 <Field label="Support Phone Number">
                   <input
@@ -187,24 +200,28 @@ function Setup() {
               {step > 1 ? (
                 <button
                   type="button"
-                  onClick={step === 3 ? finish : goNext}
+                  onClick={() => setStep((s) => Math.max(s - 1, 1))}
                   className="text-sm text-muted-foreground hover:text-foreground"
                 >
-                  Skip for now
+                  Back
                 </button>
               ) : (
                 <span />
               )}
 
-              <button
-                type="submit"
-                disabled={step === 1 && !step1Ready}
-                className="inline-flex items-center gap-2 rounded-sm bg-sky px-6 py-3 text-sm font-semibold text-sky-foreground hover:opacity-90 disabled:opacity-40"
-              >
-                {step === 1 && <>Next: Payments <ArrowRight className="h-4 w-4" /></>}
-                {step === 2 && <>Next: Receipts <ArrowRight className="h-4 w-4" /></>}
-                {step === 3 && <>Complete Setup <ArrowRight className="h-4 w-4" /></>}
-              </button>
+              {step === 1 ? (
+                <span />
+              ) : (
+                <button
+                  type="submit"
+                  disabled={step === 2 && !step2Ready}
+                  className="inline-flex items-center gap-2 rounded-sm bg-sky px-6 py-3 text-sm font-semibold text-sky-foreground hover:opacity-90 disabled:opacity-40"
+                >
+                  {step === 2 && <>Next: Payments <ArrowRight className="h-4 w-4" /></>}
+                  {step === 3 && <>Next: Receipts <ArrowRight className="h-4 w-4" /></>}
+                  {step === 4 && <>Complete Setup <ArrowRight className="h-4 w-4" /></>}
+                </button>
+              )}
             </div>
           </form>
         </div>

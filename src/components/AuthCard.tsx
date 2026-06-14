@@ -20,13 +20,17 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
 
     try {
       if (isSignup) {
-        if (!email || !identifier || !password) {
+        if (!identifier || !password) {
           throw new Error("All fields are required");
         }
         if (password.length < 6) {
           throw new Error("Password must be at least 6 characters");
         }
-        const result = actions.signup(email, identifier, password);
+        // Detect if identifier is email or phone
+        const isEmail = identifier.includes('@');
+        const email = isEmail ? identifier : '';
+        const phone = isEmail ? '' : identifier;
+        const result = actions.signup(email, phone, password);
         if (result.success) {
           navigate({ to: "/setup" });
         }
@@ -77,24 +81,12 @@ export function AuthCard({ mode }: { mode: "login" | "signup" }) {
           )}
 
           <form onSubmit={onSubmit} className="mt-7 space-y-4">
-            {isSignup && (
-              <Field label="Email">
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@example.com"
-                  autoComplete="email"
-                  className="h-11 w-full rounded-sm border border-transparent bg-secondary px-3 text-sm outline-none transition-colors focus:border-ring focus:bg-card"
-                />
-              </Field>
-            )}
             <Field label="Phone Number or Email">
               <input
                 type="text"
                 value={identifier}
                 onChange={(e) => setIdentifier(e.target.value)}
-                placeholder="0712 345 678"
+                placeholder="0712 345 678 or you@example.com"
                 autoComplete="username"
                 className="h-11 w-full rounded-sm border border-transparent bg-secondary px-3 text-sm outline-none transition-colors focus:border-ring focus:bg-card"
               />

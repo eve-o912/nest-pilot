@@ -2,6 +2,7 @@ import { useSyncExternalStore } from "react";
 
 export type TxnType = "in" | "out";
 export type ReceivableStatus = "draft" | "unpaid" | "paid";
+export type UserSegment = "informal_business" | "startup_founder" | "individual_gig" | "sme_owner";
 
 export interface Transaction {
   id: string;
@@ -55,6 +56,7 @@ interface State {
   mpesa: MpesaMessage[];
   users: User[];
   session: AuthSession | null;
+  currentSegment: UserSegment;
 }
 
 const BUSINESS_STORAGE_KEY = "nestpilot.business";
@@ -185,6 +187,28 @@ function persistMpesa(mpesa: MpesaMessage[]) {
   }
 }
 
+const SEGMENT_STORAGE_KEY = "nestpilot.segment";
+
+function loadSegment(): UserSegment {
+  if (typeof window === "undefined") return "informal_business";
+  try {
+    const raw = window.localStorage.getItem(SEGMENT_STORAGE_KEY);
+    if (!raw) return "informal_business";
+    return raw as UserSegment;
+  } catch {
+    return "informal_business";
+  }
+}
+
+function persistSegment(segment: UserSegment) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(SEGMENT_STORAGE_KEY, segment);
+  } catch {
+    /* ignore */
+  }
+}
+
 const listeners = new Set<() => void>();
 let state: State = {
   business: loadBusiness(),
@@ -192,6 +216,7 @@ let state: State = {
   mpesa: loadMpesa(),
   users: loadUsers(),
   session: loadSession(),
+  currentSegment: loadSegment(),
 };
 
 function emit() { listeners.forEach((l) => l()); }
@@ -279,6 +304,12 @@ export const actions = {
     updatedUsers[userIndex] = { ...updatedUsers[userIndex], password: newPassword };
     state = { ...state, users: updatedUsers };
     persistUsers(updatedUsers);
+    emit();
+    return { success: true };
+  },
+  setSegment(segment: UserSegment) {
+    state = { ...state, currentSegment: segment };
+    persistSegment(segment);
     emit();
     return { success: true };
   },
